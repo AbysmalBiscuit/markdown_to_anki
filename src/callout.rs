@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 use strum_macros::Display;
 
 // use rayon::prelude::*;
-use regex::Regex;
+use regex::{Match, Regex};
 
 // use hyperscan::prelude::*;
 
@@ -168,7 +168,7 @@ impl Default for Callout {
 }
 
 static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-z0-9 .,?!'"()\[\]{}\-+|*_/\\]*?)(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)\s*?(.*)$"#).unwrap()
+    Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-z0-9.,?!'"()\[\]{}\-+|*_/\\]+(?: [\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-z0-9.,?!'"()\[\]{}\-+|*_/\\])*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)?\s*(.*?)?$"#).unwrap()
 });
 
 impl Callout {
@@ -185,6 +185,11 @@ impl Callout {
             sub_callouts,
         }
     }
+
+    // TODO: this funciton
+    // fn parse_description(&self) -> Vec<&str> {
+    //     todo!()
+    // }
 
     // TODO: this function
     // pub fn to_anki_entry(&self) -> String {
@@ -203,60 +208,6 @@ impl TryFrom<Vec<&str>> for Callout {
             None => panic!("{:?}", CalloutError::EmptyString),
         };
 
-        // let mut type_block = false;
-        // let mut text_block = false;
-        // let mut transliteration_block = false;
-        // let mut emoji_block = false;
-        //
-        // let mut type_finished = false;
-        // let mut text_finished = false;
-        // let mut transliteration_finished = false;
-        // let mut emoji_finished = false;
-        //
-        // let mut type_vec: Vec<char> = Vec::with_capacity(header_line.len() - 5);
-        // let mut text_vec: Vec<char> = Vec::with_capacity(header_line.len() - 5);
-        // let mut transliteration_vec: Vec<char> = Vec::with_capacity(header_line.len() - 5);
-        // let mut emoji_vec: Vec<char> = Vec::with_capacity(header_line.len() - 5);
-        //
-        // let mut prev = '\0';
-        // for c in header_line.chars() {
-        //     if !type_finished {
-        //         if !type_block {
-        //             if c.eq(&'!') {
-        //                 type_block = true;
-        //                 continue;
-        //             }
-        //         } else if c.ne(&']') {
-        //             type_vec.push(c);
-        //             continue;
-        //         } else {
-        //             type_finished = true;
-        //             prev = c;
-        //             continue;
-        //         }
-        //     } else if !text_finished {
-        //         if prev.eq(&']') || prev.eq(&'+') || prev.eq(&'-') {
-        //             if c.eq(&' ') {
-        //                 continue;
-        //             } else {
-        //                 prev = '\0';
-        //                 text_block = true;
-        //                 text_vec.push(c);
-        //             }
-        //         } else if text_block && prev.ne(&' ') && c.ne(&' ') {
-        //             text_vec.push(c);
-        //             prev = c;
-        //         } else {
-        //             text_finished = true;
-        //         }
-        //     } else if !transliteration_finished {
-        //         if !transliteration_block {
-        //             transliteration_block = true;
-        //
-        //         }
-        //     }
-        // }
-
         let caps = RE_HEADER.captures(header_line).unwrap_or_else(|| {
             dbg!("panicking", &value);
             panic!("Failed to parse header.");
@@ -267,7 +218,9 @@ impl TryFrom<Vec<&str>> for Callout {
         // );
 
         let callout_type: CalloutType = caps[1].try_into()?;
-        let header: String = caps[2].to_string();
+        let header: String = caps
+            .get(2)
+            .map_or(String::new(), |m| m.as_str().to_string());
         let transliteration = caps
             .get(3)
             .map(|m| m.as_str().trim().to_string())

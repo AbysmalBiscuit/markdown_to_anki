@@ -31,7 +31,7 @@ fn process_file(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync
         })
         .map(Callout::try_from)
         .collect();
-    dbg!(&vals);
+    // dbg!(&vals);
     let v = match &vals[0] {
         Ok(value) => value,
         Err(err) => panic!("{}", err),

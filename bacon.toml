@@ -3,3 +3,20 @@ command = ["cargo", "run", "/mnt/c/Users/Lev/Obsidian/Vault/Languages/한국어"
 need_stdout = true
 allow_failures = true
 allow_warnings = true
+
+[jobs.cli-vault-korean]
+command = [
+    "cargo",
+    "run",
+    "convert",
+    "/mnt/c/Users/Lev/Obsidian/Vault/Languages/한국어",
+]
+need_stdout = true
+allow_failures = true
+allow_warnings = true
+
+[jobs.cli-project-dir]
+command = ["cargo", "run", "convert", "/home/lev/Git/lev/markdown_to_anki"]
+need_stdout = true
+allow_failures = true
+allow_warnings = true

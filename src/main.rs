@@ -1,16 +1,18 @@
 mod callout;
+mod cli;
 use callout::Callout;
+use cli::cli;
 use jwalk::WalkDir;
 use rayon::prelude::*;
-use std::{env, error::Error, fs::read_to_string, io, path::Path};
+use std::{
+    error::Error,
+    fs::{File, read_to_string},
+    io::{self, Write},
+    path::{Path, PathBuf},
+};
 
-// #[macro_use]
-// extern crate hyperscan;
-
-fn process_file(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync>> {
-    // let c =
+fn extract_callouts(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync>> {
     let content = read_to_string(path)?;
-    // TODO: single thread: split file into callout blocks
     let binding: Vec<_> = content
         .split("\n> [!")
         .skip(1)
@@ -18,8 +20,6 @@ fn process_file(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync
         .map(|block| format!("> [!{}", block))
         .collect::<Vec<String>>();
 
-    // TODO: parallel: parse all callout blocks into a callout structs and convert the structs into
-    // anki card text
     let vals: Vec<_> = binding
         // .par_iter()
         .iter()
@@ -30,42 +30,60 @@ fn process_file(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync
                 .collect::<Vec<_>>()
         })
         .map(Callout::try_from)
+        .map(|callout| callout.unwrap())
         .collect();
-    // dbg!(&vals);
-    let v = match &vals[0] {
-        Ok(value) => value,
-        Err(err) => panic!("{}", err),
-    };
-    dbg!(&v.callout_type, &v.header, &v.content, &v.sub_callouts);
 
-    // TODO: merge callouts text into single string
-    Ok(Vec::new())
+    Ok(vals)
 }
 
-fn main() -> io::Result<()> {
-    let current_dir = env::current_dir()?;
-    dbg!(&current_dir);
-    // let args: Vec<String> = env::args().collect();
-    // dbg!(args);
-    // let target_dir = "/mnt/c/Users/Lev/Obsidian/Vault/Languages/한국어";
-    let target_dir = current_dir;
-    // dbg!(target_dir);
-    let markdown_files: Vec<_> = WalkDir::new(target_dir)
+fn create_anki_cards_file(input_dir: PathBuf, output_file_path: PathBuf) -> io::Result<()> {
+    dbg!(&input_dir, &output_file_path);
+    let markdown_files: Vec<_> = WalkDir::new(input_dir)
         .into_iter()
         .map(|entry| entry.unwrap().path())
         .filter(|path| {
             path.extension().is_some_and(|ext| ext == "md")
             // TODO: remove name check for final version
-                && path.file_name().is_some_and(|name| name.eq("words.md"))
+            // && path.file_name().is_some_and(|name| name.eq("words.md"))
+            && path.ne(output_file_path.as_os_str())
         })
         .collect();
     dbg!(&markdown_files);
-    markdown_files
+    let callouts: Vec<Callout> = markdown_files
         .par_iter()
-        .map(|path| process_file(path))
-        .collect::<Vec<_>>();
+        .map(|path| extract_callouts(path).unwrap())
+        .flatten()
+        .collect();
+    dbg!(&callouts);
 
-    // TODO: stream processed text into file
+    let mut output_file = File::create(output_file_path)?;
+    let content = callouts
+        .par_iter()
+        .map(|callout| callout.to_anki_entry(None))
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    dbg!(&content);
+    output_file.write_all(content.as_bytes())?;
+    Ok(())
+}
+
+fn main() -> io::Result<()> {
+    let matches = cli().get_matches();
+    match matches.subcommand() {
+        Some(("convert", sub_matches)) => {
+            let paths = sub_matches
+                .get_many::<PathBuf>("PATH")
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+            let target_dir = paths.first().unwrap().to_path_buf();
+            let output_file_path = paths
+                .get(1)
+                .map_or_else(|| target_dir.join("Anki cards.md"), |p| p.to_path_buf());
+            create_anki_cards_file(target_dir, output_file_path)?
+        }
+        _ => unreachable!(),
+    }
 
     Ok(())
 }
@@ -74,7 +92,7 @@ fn main() -> io::Result<()> {
 mod test {
     use std::env;
 
-    use crate::process_file;
+    use crate::extract_callouts;
 
     #[test]
     fn test_kr_words() {
@@ -83,7 +101,7 @@ mod test {
             Err(err) => panic!("{}", err),
         };
         let path = current_dir.join("words.md");
-        let callouts = match process_file(&path) {
+        let callouts = match extract_callouts(&path) {
             Ok(value) => value,
             Err(err) => panic!("{}", err),
         };

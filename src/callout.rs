@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 use strum_macros::Display;
 
 // use rayon::prelude::*;
-use regex::{Match, Regex};
+use regex::Regex;
 
 // use hyperscan::prelude::*;
 
@@ -191,10 +191,41 @@ impl Callout {
     //     todo!()
     // }
 
-    // TODO: this function
-    // pub fn to_anki_entry(&self) -> String {
-    //     todo!()
-    // }
+    fn sub_callout_to_anki(&self) -> String {
+        let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
+        output.push(self.content.join("\n"));
+        if !self.sub_callouts.is_empty() {
+            for sub_callout in &self.sub_callouts {
+                output.push(sub_callout.sub_callout_to_anki());
+            }
+        }
+        format!(
+            "* {}\n* {}\n * {}",
+            self.header,
+            self.content.join("\n* "),
+            output.join("\n")
+        )
+    }
+
+    pub fn to_anki_entry(&self, card_type: Option<&str>) -> String {
+        let card_type = card_type.unwrap_or("Basic");
+        let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
+        output.push(self.content.join("\n"));
+        if !self.sub_callouts.is_empty() {
+            for sub_callout in &self.sub_callouts {
+                match sub_callout.callout_type {
+                    CalloutType::Links => continue,
+                    _ => output.push(sub_callout.sub_callout_to_anki()),
+                }
+            }
+        }
+        format!(
+            "<pre>\nSTART\n{}\n{}\nBack: {}\nEND\n</pre>",
+            card_type,
+            self.header,
+            output.join("\n")
+        )
+    }
 }
 
 impl TryFrom<Vec<&str>> for Callout {

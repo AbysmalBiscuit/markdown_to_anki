@@ -1,4 +1,4 @@
-use std::ffi::OsString;
+// use std::ffi::OsString;
 use std::path::PathBuf;
 
 use clap::{Command, arg};
@@ -56,6 +56,6 @@ pub fn cli() -> Command {
     // )
 }
 
-fn push_args() -> Vec<clap::Arg> {
-    vec![arg!(-m --message <MESSAGE>)]
-}
+// fn push_args() -> Vec<clap::Arg> {
+//     vec![arg!(-m --message <MESSAGE>)]
+// }

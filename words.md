@@ -23,7 +23,6 @@ updated: 2025-04-06 15:07
 >
 > ^sr9fs3
 
-
 > [!word]+ 이론
 > theory
 >
@@ -60,8 +59,10 @@ updated: 2025-04-06 15:07
 > ^37c598
 
 > [!word]+ 점
+>
 > 1. point, spot, dot, period, full stop
 > 2. point, aspect
+>
 > > As in a key point/aspect.
 >
 > ^qzk8os
@@ -127,6 +128,7 @@ updated: 2025-04-06 15:07
 > ^yvfq3o
 
 > [!word]+ 다
+>
 > 1. all, everything
 > 2. best, greatest
 >
@@ -135,6 +137,7 @@ updated: 2025-04-06 15:07
 > ^qdred7
 
 > [!word]+ 최고
+>
 > - the highest, top
 > - (the) best 🏆
 >
@@ -169,7 +172,7 @@ updated: 2025-04-06 15:07
 >
 > ^74d4cd
 
-> [!word]+ 힘
+> [!word]+ 힘 💪
 > strength, power 💪
 >
 > ^fa3d13
@@ -222,8 +225,8 @@ updated: 2025-04-06 15:07
 > > [[부사]]도 될 수 있어요
 > ^u0q0rg
 
-
 > [!word]+ 구체적
+>
 > - being concrete, being material
 > - being detailed, being specific
 >
@@ -249,6 +252,7 @@ updated: 2025-04-06 15:07
 > ^opjihh
 
 > [!word]+ 일반적
+>
 > - being general, being popular, being universal
 > - being ordinary, being common, being usual
 >
@@ -262,8 +266,10 @@ updated: 2025-04-06 15:07
 > ^hjsiej
 
 > [!word]+ 미만
+>
 > - being under, being below
 > - the state of not having reached a number threshold
+>
 > > Not physically, but relationally/conceptually.
 >
 > > [!links]-
@@ -276,6 +282,7 @@ updated: 2025-04-06 15:07
 > ^06a3uo
 
 > [!word]+ 미만의
+>
 > - under
 > - below
 > - less than

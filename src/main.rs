@@ -12,17 +12,16 @@ use std::{
 };
 
 fn extract_callouts(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync>> {
-    let content = read_to_string(path)?;
-    let binding: Vec<_> = content
+    let content: String = read_to_string(path)?;
+    let blocks: Vec<_> = content
         .split("\n> [!")
         .skip(1)
         .filter(|block| !block.trim().is_empty())
         .map(|block| format!("> [!{}", block))
         .collect::<Vec<String>>();
 
-    let vals: Vec<_> = binding
-        // .par_iter()
-        .iter()
+    let callouts: Vec<_> = blocks
+        .par_iter()
         .map(|block| {
             block
                 .par_split('\n')
@@ -33,28 +32,28 @@ fn extract_callouts(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + 
         .map(|callout| callout.unwrap())
         .collect();
 
-    Ok(vals)
+    Ok(callouts)
 }
 
 fn create_anki_cards_file(input_dir: PathBuf, output_file_path: PathBuf) -> io::Result<()> {
-    dbg!(&input_dir, &output_file_path);
+    // dbg!(&input_dir, &output_file_path);
     let markdown_files: Vec<_> = WalkDir::new(input_dir)
         .into_iter()
         .map(|entry| entry.unwrap().path())
         .filter(|path| {
             path.extension().is_some_and(|ext| ext == "md")
             // TODO: remove name check for final version
-            // && path.file_name().is_some_and(|name| name.eq("words.md"))
+            && path.file_name().is_some_and(|name| name.eq("rules.md"))
             && path.ne(output_file_path.as_os_str())
         })
         .collect();
-    dbg!(&markdown_files);
+    // dbg!(&markdown_files);
     let callouts: Vec<Callout> = markdown_files
         .par_iter()
         .map(|path| extract_callouts(path).unwrap())
         .flatten()
         .collect();
-    dbg!(&callouts);
+    // dbg!(&callouts);
 
     let mut output_file = File::create(output_file_path)?;
     let content = callouts
@@ -62,7 +61,7 @@ fn create_anki_cards_file(input_dir: PathBuf, output_file_path: PathBuf) -> io::
         .map(|callout| callout.to_anki_entry(None))
         .collect::<Vec<_>>()
         .join("\n\n");
-    dbg!(&content);
+    // dbg!(&content);
     output_file.write_all(content.as_bytes())?;
     Ok(())
 }

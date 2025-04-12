@@ -1,10 +1,8 @@
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::prelude::*;
+use regex::Regex;
 use std::sync::LazyLock;
 use strum_macros::Display;
-
-// use rayon::prelude::*;
-use regex::Regex;
-
-// use hyperscan::prelude::*;
 
 #[derive(Display, Debug)]
 pub enum CalloutError {
@@ -13,7 +11,7 @@ pub enum CalloutError {
     FailedToParseHeader,
 }
 
-#[derive(Debug)]
+#[derive(Display, Debug)]
 pub enum CalloutType {
     // Builtin callouts
     Abstract,
@@ -51,6 +49,49 @@ pub enum CalloutType {
     ExampleSentenceKR,
     OverviewKR,
     Exception,
+}
+
+impl CalloutType {
+    fn callout_default_header(&self) -> String {
+        match self {
+            // Builtin
+            CalloutType::Abstract => "Abstract".into(),
+            CalloutType::Attention => "Attention".into(),
+            CalloutType::Bug => "Bug".into(),
+            CalloutType::Caution => "Caution".into(),
+            CalloutType::Check => "Check".into(),
+            CalloutType::Cite => "Cite".into(),
+            CalloutType::Danger => "Danger".into(),
+            CalloutType::Done => "Done".into(),
+            CalloutType::ErrorCallout => "Errorcallout".into(),
+            CalloutType::Example => "Example".into(),
+            CalloutType::Exception => "Exception".into(),
+            CalloutType::Faq => "Faq".into(),
+            CalloutType::Fail => "Fail".into(),
+            CalloutType::Failure => "Failure".into(),
+            CalloutType::Help => "Help".into(),
+            CalloutType::Hint => "Hint".into(),
+            CalloutType::Info => "Info".into(),
+            CalloutType::Links => "Links".into(),
+            CalloutType::Missing => "Missing".into(),
+            CalloutType::Note => "Note".into(),
+            CalloutType::Question => "Question".into(),
+            CalloutType::Quote => "Quote".into(),
+            CalloutType::Success => "Success".into(),
+            CalloutType::Summary => "Summary".into(),
+            CalloutType::Tldr => "Tldr".into(),
+            CalloutType::Tip => "Tip".into(),
+            CalloutType::Todo => "Todo".into(),
+            CalloutType::Warning => "Warning".into(),
+            // Custom
+            CalloutType::Word => "Word".into(),
+            CalloutType::Rule => "Rule".into(),
+            CalloutType::ExampleKR => "예".into(),
+            CalloutType::ExampleSentenceKR => "예문-문장".into(),
+            CalloutType::OverviewKR => "개요".into(),
+            CalloutType::Important => "important".into(),
+        }
+    }
 }
 
 impl TryFrom<&str> for CalloutType {
@@ -186,25 +227,55 @@ impl Callout {
         }
     }
 
-    // TODO: this funciton
-    // fn parse_description(&self) -> Vec<&str> {
-    //     todo!()
-    // }
-
     fn sub_callout_to_anki(&self) -> String {
         let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
-        output.push(self.content.join("\n"));
+        output.push(
+            self.content
+                .clone()
+                .par_iter()
+                .map(|line| {
+                    if line.starts_with("> ") {
+                        line.strip_prefix("> ").unwrap().to_string()
+                    } else {
+                        line.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
         if !self.sub_callouts.is_empty() {
             for sub_callout in &self.sub_callouts {
                 output.push(sub_callout.sub_callout_to_anki());
             }
         }
+        let header = if self.header.is_empty() {
+            self.callout_type.callout_default_header()
+        } else {
+            self.header.clone()
+        };
+
         format!(
-            "* {}\n* {}\n * {}",
-            self.header,
-            self.content.join("\n* "),
-            output.join("\n")
+            r#"<div data-callout-metadata="" data-callout-fold="" data-callout="{0}" class="callout">
+    <div class="callout-title" dir="auto">
+      <div class="callout-icon">
+        {1}
+      </div>
+      <div class="callout-title-inner">{2}</div>
+    </div>
+    <div class="callout-content">
+      {3}
+    </div>
+  </div>"#,
+            self.callout_type,
+            "icon",
+            header,
+            output
+                .into_par_iter()
+                .map(|content| format!(r#"<p dir="auto">{}</p>"#, content))
+                .collect::<Vec<_>>()
+                .join("\n")
         )
+        // self.callout_to_html()
     }
 
     pub fn to_anki_entry(&self, card_type: Option<&str>) -> String {
@@ -261,7 +332,7 @@ impl TryFrom<Vec<&str>> for Callout {
             .map(|m| m.as_str().trim().to_string())
             .unwrap_or("".to_string());
 
-        let mut content = Vec::with_capacity(content_length);
+        let mut content: Vec<String> = Vec::with_capacity(content_length);
         if !emoji.is_empty() {
             content.push(emoji);
         }
@@ -269,12 +340,10 @@ impl TryFrom<Vec<&str>> for Callout {
             content.push(transliteration);
         }
 
-        // dbg!(&value);
-
         let mut sub_callouts: Vec<Callout> = Vec::with_capacity(content_length);
-        let mut prev = "";
+        let mut prev: &str = "";
         let mut line: &str;
-        let mut next = "";
+        let mut next: &str = "";
 
         // TODO: rewrite this to be a loop around indeces instead of iter
         'split_loop: loop {

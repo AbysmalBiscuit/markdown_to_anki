@@ -320,10 +320,10 @@ impl TryFrom<Vec<&str>> for Callout {
                 content.push(line.trim().to_string());
             }
         }
-        if content.last().unwrap().is_empty() {
+        if content.last().map_or_else(|| "", |item| item).is_empty() {
             content.pop();
         }
-        if content.last().unwrap().is_empty() {
+        if content.last().map_or_else(|| "", |item| item).is_empty() {
             content.pop();
         }
         Ok(Callout::new(callout_type, header, content, sub_callouts))

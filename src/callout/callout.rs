@@ -4,6 +4,7 @@ use crate::error::GenericError;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rayon::prelude::*;
 use regex::Regex;
+use std::fmt::Display;
 use std::fs::read_to_string;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -63,7 +64,8 @@ impl Callout {
 
         Ok(callouts)
     }
-    fn sub_callout_to_html(&self) -> String {
+
+    pub fn sub_callout_to_html(&self) -> String {
         let mut content = Vec::with_capacity((self.content.len() + 2) * 2);
         content.push(
             self.content
@@ -79,11 +81,13 @@ impl Callout {
                 .collect::<Vec<_>>()
                 .join("\n"),
         );
+
         if !self.sub_callouts.is_empty() {
             for sub_callout in &self.sub_callouts {
                 content.push(sub_callout.sub_callout_to_html());
             }
         }
+
         let header = if self.header.is_empty() {
             self.callout_type.callout_default_header()
         } else {
@@ -110,7 +114,7 @@ impl Callout {
     }
 
     pub fn to_anki_markdown_entry(&self, card_type: Option<&str>) -> String {
-        let card_type = card_type.unwrap_or("Basic");
+        let note_type = card_type.unwrap_or("Basic");
         let mut content = Vec::with_capacity((self.content.len() + 2) * 2);
         content.push(self.content.join("\n"));
         if !self.sub_callouts.is_empty() {
@@ -123,7 +127,7 @@ impl Callout {
         }
         format!(
             "<pre>\nSTART\n{}\n{}\nBack: {}\nEND\n</pre>",
-            card_type,
+            note_type,
             self.header,
             content.join("\n")
         )
@@ -233,5 +237,11 @@ impl TryFrom<Vec<&str>> for Callout {
             content.pop();
         }
         Ok(Callout::new(callout_type, header, content, sub_callouts))
+    }
+}
+
+impl Display for Callout {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Callout {{ {} }}", self.callout_type)
     }
 }

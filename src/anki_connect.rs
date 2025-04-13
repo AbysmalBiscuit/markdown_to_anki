@@ -1,4 +1,6 @@
+use crate::callout::callout::Callout;
 use crate::deck::Deck;
+use crate::note::Basic;
 use anki_bridge::prelude::*;
 use jwalk::WalkDir;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -22,15 +24,45 @@ pub fn sync(path: &PathBuf, parent_deck: String) -> Result<(), GenericError> {
 
     let markdown_files = find_markdown_files(path)?;
 
+    if markdown_files.is_empty() {
+        println!(
+            "Failed to find any markdown files in: '{}'",
+            path.to_str().unwrap()
+        );
+        return Ok(());
+    }
+
+    println!("Found {} markdown files", &markdown_files.len());
+
     let decks = markdown_files
         .par_iter()
         .map(|path| Deck::try_from(path).unwrap())
+        .filter(|deck| !deck.callouts.is_empty())
         .collect::<Vec<_>>();
 
-    let decks: Vec<String> = client.request(DeckNamesRequest {}).unwrap();
-    let deck_stats: HashMap<usize, GetDeckStatsResponse> =
-        client.request(GetDeckStatsRequest { decks }).unwrap();
-    dbg!(deck_stats);
+    let num_found_decks: usize = decks.len();
+    let num_total_callouts: usize = decks.par_iter().map(|d| d.callouts.len()).sum();
+
+    println!(
+        "Found {} decks with a total of {} callouts",
+        num_found_decks, num_total_callouts
+    );
+
+    let callouts: Vec<Callout> = markdown_files
+        .par_iter()
+        .map(|path| Callout::extract_callouts(path).unwrap())
+        .flatten()
+        .collect::<Vec<_>>();
+
+    let decks_names: Vec<String> = client.request(DeckNamesRequest {}).unwrap();
+    let deck_stats: HashMap<usize, GetDeckStatsResponse> = client
+        .request(GetDeckStatsRequest { decks: decks_names })
+        .unwrap();
+
+    dbg!(&decks[0].callouts[0]);
+
+    let basics: Vec<Basic> = callouts.par_iter().map(Basic::from).collect();
+    dbg!(&basics);
     Ok(())
 }
 

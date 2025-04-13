@@ -1,8 +1,10 @@
+#![allow(unused)]
 mod anki_connect;
 mod callout;
 mod cli;
 mod deck;
 mod error;
+mod note;
 use callout::callout::Callout;
 use cli::cli;
 use jwalk::WalkDir;
@@ -62,6 +64,10 @@ fn main() -> io::Result<()> {
                 .get_one::<PathBuf>("input")
                 .unwrap()
                 .to_path_buf();
+            let note_type: String = sub_matches
+                .get_one::<String>("note_type")
+                .unwrap()
+                .to_string();
             let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();
             let _ = anki_connect::sync(&input_dir, parent_deck);
         }

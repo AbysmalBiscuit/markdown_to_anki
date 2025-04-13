@@ -18,6 +18,8 @@ fn find_markdown_files(input_dir: &PathBuf) -> Result<Vec<PathBuf>, Error> {
 
 // fn request(action, )
 pub fn sync(path: &PathBuf, parent_deck: String) -> Result<(), GenericError> {
+    let client = AnkiClient::default();
+
     let markdown_files = find_markdown_files(path)?;
 
     let decks = markdown_files
@@ -25,7 +27,6 @@ pub fn sync(path: &PathBuf, parent_deck: String) -> Result<(), GenericError> {
         .map(|path| Deck::try_from(path).unwrap())
         .collect::<Vec<_>>();
 
-    let client = AnkiClient::default();
     let decks: Vec<String> = client.request(DeckNamesRequest {}).unwrap();
     let deck_stats: HashMap<usize, GetDeckStatsResponse> =
         client.request(GetDeckStatsRequest { decks }).unwrap();

@@ -7,6 +7,7 @@ mod error;
 mod note;
 use callout::callout::Callout;
 use cli::cli;
+use error::GenericError;
 use jwalk::WalkDir;
 use rayon::prelude::*;
 use std::{
@@ -18,7 +19,7 @@ use std::{
 fn create_markdown_anki_cards_file(
     input_dir: &PathBuf,
     output_file_path: PathBuf,
-) -> io::Result<()> {
+) -> Result<(), GenericError> {
     let markdown_files: Vec<PathBuf> = WalkDir::new(input_dir)
         .into_iter()
         .map(|entry| entry.unwrap().path())
@@ -66,7 +67,7 @@ fn create_markdown_anki_cards_file(
     Ok(())
 }
 
-fn main() -> io::Result<()> {
+fn main() -> Result<(), GenericError> {
     let matches = cli().get_matches();
     match matches.subcommand() {
         Some(("markdown", sub_matches)) => {
@@ -89,7 +90,7 @@ fn main() -> io::Result<()> {
                 .unwrap()
                 .to_string();
             let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();
-            let _ = anki_connect::sync(&input_dir, parent_deck);
+            anki_connect::sync(&input_dir, parent_deck)?;
         }
         _ => unreachable!(),
     }

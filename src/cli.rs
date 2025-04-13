@@ -49,21 +49,16 @@ pub fn cli() -> Command {
                 .arg(
                     Arg::new("deck")
                     .help("name of deck to which cards should be added")
-                        .index(2)
+                    .long("deck")
+                    .short('d')
+                    .default_value("md2anki")
                 )
-
+                .arg(
+                    Arg::new("note_type")
+                        .help("name of the note type that should be used for the cards")
+                        .long("note")
+                        .short('n')
+                        .default_value("Korean md2anki Basic (and reversed card)")
+                )
         )
-    // .subcommand(
-    //     Command::new("stash")
-    //         .args_conflicts_with_subcommands(true)
-    //         .flatten_help(true)
-    //         .args(push_args())
-    //         .subcommand(Command::new("push").args(push_args()))
-    //         .subcommand(Command::new("pop").arg(arg!([STASH])))
-    //         .subcommand(Command::new("apply").arg(arg!([STASH]))),
-    // )
 }
-
-// fn push_args() -> Vec<clap::Arg> {
-//     vec![arg!(-m --message <MESSAGE>)]
-// }

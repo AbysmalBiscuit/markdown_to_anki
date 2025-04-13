@@ -110,14 +110,14 @@ impl Callout {
     }
 
     pub fn to_anki_markdown_entry(&self, card_type: Option<&str>) -> String {
-        let card_type = card_type.unwrap_or("note");
-        let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
-        output.push(self.content.join("\n"));
+        let card_type = card_type.unwrap_or("Basic");
+        let mut content = Vec::with_capacity((self.content.len() + 2) * 2);
+        content.push(self.content.join("\n"));
         if !self.sub_callouts.is_empty() {
             for sub_callout in &self.sub_callouts {
                 match sub_callout.callout_type {
                     CalloutType::Links => continue,
-                    _ => output.push(sub_callout.sub_callout_to_html()),
+                    _ => content.push(sub_callout.sub_callout_to_html()),
                 }
             }
         }
@@ -125,7 +125,7 @@ impl Callout {
             "<pre>\nSTART\n{}\n{}\nBack: {}\nEND\n</pre>",
             card_type,
             self.header,
-            output.join("\n")
+            content.join("\n")
         )
     }
 }

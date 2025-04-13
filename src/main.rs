@@ -6,40 +6,10 @@ use cli::cli;
 use jwalk::WalkDir;
 use rayon::prelude::*;
 use std::{
-    error::Error,
-    fs::{File, read_to_string},
+    fs::File,
     io::{self, Write},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
-
-fn extract_callouts(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync>> {
-    let content: String = read_to_string(path)?;
-    let blocks: Vec<String> = content
-        .split("\n> [!")
-        .skip(1)
-        .collect::<Vec<_>>()
-        .into_par_iter()
-        .map(|block| block.trim())
-        .filter(|block| {
-            !block.is_empty() && (block.starts_with("word") || block.starts_with("rule"))
-        })
-        .map(|block| format!("> [!{}", block))
-        .collect();
-
-    let callouts: Vec<Callout> = blocks
-        .par_iter()
-        .map(|block| {
-            block
-                .par_split('\n')
-                .filter(|line| line.starts_with('>'))
-                .collect::<Vec<_>>()
-        })
-        .map(Callout::try_from)
-        .map(|callout| callout.unwrap())
-        .collect();
-
-    Ok(callouts)
-}
 
 fn create_markdown_anki_cards_file(
     input_dir: PathBuf,
@@ -55,7 +25,7 @@ fn create_markdown_anki_cards_file(
 
     let callouts: Vec<Callout> = markdown_files
         .par_iter()
-        .map(|path| extract_callouts(path).unwrap())
+        .map(|path| Callout::extract_callouts(path).unwrap())
         .flatten()
         .collect();
 

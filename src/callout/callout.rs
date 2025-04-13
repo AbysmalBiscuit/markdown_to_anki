@@ -242,6 +242,6 @@ impl TryFrom<Vec<&str>> for Callout {
 
 impl Display for Callout {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Callout {{ {} }}", self.callout_type)
+        write!(f, "{:?}", self,)
     }
 }

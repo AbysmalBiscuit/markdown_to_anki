@@ -3,7 +3,14 @@ use crate::callout::callout_type::CalloutType;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rayon::prelude::*;
 use regex::Regex;
+use std::error::Error;
+use std::fs::read_to_string;
+use std::path::Path;
 use std::sync::LazyLock;
+
+static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+(?: [\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+)*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)? *(.*?)?$"#).unwrap()
+});
 
 #[derive(Debug)]
 pub struct Callout {
@@ -12,21 +19,6 @@ pub struct Callout {
     pub content: Vec<String>,
     pub sub_callouts: Vec<Callout>,
 }
-
-impl Default for Callout {
-    fn default() -> Self {
-        Callout {
-            callout_type: CalloutType::Word,
-            header: "Default".into(),
-            content: Vec::new(),
-            sub_callouts: Vec::new(),
-        }
-    }
-}
-
-static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+(?: [\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+)*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)? *(.*?)?$"#).unwrap()
-});
 
 impl Callout {
     pub fn new(
@@ -43,6 +35,34 @@ impl Callout {
         }
     }
 
+    pub fn extract_callouts(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync>> {
+        let content: String = read_to_string(path)?;
+        let blocks: Vec<String> = content
+            .split("\n> [!")
+            .skip(1)
+            .collect::<Vec<_>>()
+            .into_par_iter()
+            .map(|block| block.trim())
+            .filter(|block| {
+                !block.is_empty() && (block.starts_with("word") || block.starts_with("rule"))
+            })
+            .map(|block| format!("> [!{}", block))
+            .collect();
+
+        let callouts: Vec<Callout> = blocks
+            .par_iter()
+            .map(|block| {
+                block
+                    .par_split('\n')
+                    .filter(|line| line.starts_with('>'))
+                    .collect::<Vec<_>>()
+            })
+            .map(Callout::try_from)
+            .map(|callout| callout.unwrap())
+            .collect();
+
+        Ok(callouts)
+    }
     fn sub_callout_to_card(&self) -> String {
         let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
         output.push(
@@ -112,6 +132,17 @@ impl Callout {
             self.header,
             output.join("\n")
         )
+    }
+}
+
+impl Default for Callout {
+    fn default() -> Self {
+        Callout {
+            callout_type: CalloutType::Word,
+            header: "Default".into(),
+            content: Vec::new(),
+            sub_callouts: Vec::new(),
+        }
     }
 }
 

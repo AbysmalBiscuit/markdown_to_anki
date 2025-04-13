@@ -1,6 +1,6 @@
 mod callout;
 mod cli;
-use callout::Callout;
+use callout::callout::Callout;
 use cli::cli;
 use jwalk::WalkDir;
 use rayon::prelude::*;
@@ -69,17 +69,15 @@ fn create_anki_cards_file(input_dir: PathBuf, output_file_path: PathBuf) -> io::
 fn main() -> io::Result<()> {
     let matches = cli().get_matches();
     match matches.subcommand() {
-        Some(("convert", sub_matches)) => {
-            let paths = sub_matches
-                .get_many::<PathBuf>("PATH")
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
-            let target_dir = paths.first().unwrap().to_path_buf();
-            let output_file_path = paths
-                .get(1)
-                .map_or_else(|| target_dir.join("Anki cards.md"), |p| p.to_path_buf());
-            create_anki_cards_file(target_dir, output_file_path)?
+        Some(("markdown", sub_matches)) => {
+            let input_dir: PathBuf = sub_matches
+                .get_one::<PathBuf>("input")
+                .unwrap()
+                .to_path_buf();
+            let output_file_path: PathBuf = sub_matches
+                .get_one::<PathBuf>("output_file")
+                .map_or_else(|| input_dir.join("Anki cards.md"), |p| p.to_path_buf());
+            create_anki_cards_file(input_dir, output_file_path)?
         }
         _ => unreachable!(),
     }

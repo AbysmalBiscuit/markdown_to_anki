@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anki_bridge = { version = "0.8.0", features = ["ureq_blocking"] }
 clap = "4.5.36"
 hyperscan = "0.3.2"
 jwalk = "0.8.1"
 rayon = "1.10.0"
 regex = "1.11.1"
+serde = "1.0.219"
 strum = "0.27.1"
 strum_macros = "0.27.1"

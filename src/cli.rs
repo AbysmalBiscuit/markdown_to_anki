@@ -1,7 +1,7 @@
 // use std::ffi::OsString;
 use std::path::PathBuf;
 
-use clap::{Command, arg};
+use clap::{Arg, Command};
 
 pub fn cli() -> Command {
     Command::new("md2anki")
@@ -37,13 +37,23 @@ pub fn cli() -> Command {
         //         .arg_required_else_help(true),
         // )
         .subcommand(
-            Command::new("convert")
-                .about("convert `word` and `rule` blocks to Anki format")
+            Command::new("markdown")
+                .about("convert `word` and `rule` blocks to a format that can be imported with ObsidianToAnki")
                 .arg_required_else_help(true)
                 .arg(
-                    arg!(<PATH> ... "directory to search for files")
-                        .value_parser(clap::value_parser!(PathBuf)),
+                    Arg::new("input")
+                        .help("directory to search for files")
+                        .index(1)
+                        .required(true)
+                        .value_parser(clap::value_parser!(PathBuf))
+                )
+                .arg(
+                    Arg::new("output_file")
+                        .help("path to output file, if not specified, then a file ")
+                        .index(2)
+                        .required(false)
                 ),
+
         )
     // .subcommand(
     //     Command::new("stash")

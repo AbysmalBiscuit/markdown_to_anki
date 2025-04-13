@@ -9,33 +9,13 @@ pub fn cli() -> Command {
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
-        // .subcommand(
-        //     Command::new("convert")
-        //         .about("Clones repos")
-        //         .arg(arg!(<PATH> "The remote to clone"))
-        //         .arg_required_else_help(true),
-        // )
-        // .subcommand(
-        //     Command::new("diff")
-        //         .about("Compare two commits")
-        //         .arg(arg!(base: [COMMIT]))
-        //         .arg(arg!(head: [COMMIT]))
-        //         .arg(arg!(path: [PATH]).last(true))
-        //         .arg(
-        //             arg!(--color <WHEN>)
-        //                 .value_parser(["always", "auto", "never"])
-        //                 .num_args(0..=1)
-        //                 .require_equals(true)
-        //                 .default_value("auto")
-        //                 .default_missing_value("always"),
-        //         ),
-        // )
-        // .subcommand(
-        //     Command::new("push")
-        //         .about("pushes things")
-        //         .arg(arg!(<REMOTE> "The remote to target"))
-        //         .arg_required_else_help(true),
-        // )
+        .arg(
+            Arg::new("verbosity")
+                .long("verbose")
+                .short('v')
+                .help("enable verbose output")
+                .action(clap::ArgAction::Count)
+        )
         .subcommand(
             Command::new("markdown")
                 .about("convert `word` and `rule` blocks to a format that can be imported with ObsidianToAnki")
@@ -53,6 +33,24 @@ pub fn cli() -> Command {
                         .index(2)
                         .required(false)
                 ),
+
+        )
+        .subcommand(
+            Command::new("sync")
+                .about("sync cards to Anki")
+                .arg_required_else_help(true)
+                .arg(
+                    Arg::new("input")
+                        .help("directory to search for files")
+                        .index(1)
+                        .required(true)
+                        .value_parser(clap::value_parser!(PathBuf))
+                )
+                .arg(
+                    Arg::new("deck")
+                    .help("name of deck to which cards should be added")
+                        .index(2)
+                )
 
         )
     // .subcommand(

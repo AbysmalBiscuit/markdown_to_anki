@@ -1,6 +1,8 @@
+mod anki_connect;
 mod callout;
 mod cli;
 mod deck;
+mod error;
 use callout::callout::Callout;
 use cli::cli;
 use jwalk::WalkDir;
@@ -12,16 +14,16 @@ use std::{
 };
 
 fn create_markdown_anki_cards_file(
-    input_dir: PathBuf,
+    input_dir: &PathBuf,
     output_file_path: PathBuf,
 ) -> io::Result<()> {
-    let markdown_files: Vec<_> = WalkDir::new(input_dir)
+    let markdown_files: Vec<PathBuf> = WalkDir::new(input_dir)
         .into_iter()
         .map(|entry| entry.unwrap().path())
         .filter(|path| {
             path.extension().is_some_and(|ext| ext == "md") && path.ne(output_file_path.as_os_str())
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     let callouts: Vec<Callout> = markdown_files
         .par_iter()
@@ -53,7 +55,15 @@ fn main() -> io::Result<()> {
             let output_file_path: PathBuf = sub_matches
                 .get_one::<PathBuf>("output_file")
                 .map_or_else(|| input_dir.join("Anki cards.md"), |p| p.to_path_buf());
-            create_markdown_anki_cards_file(input_dir, output_file_path)?
+            create_markdown_anki_cards_file(&input_dir, output_file_path)?
+        }
+        Some(("sync", sub_matches)) => {
+            let input_dir: PathBuf = sub_matches
+                .get_one::<PathBuf>("input")
+                .unwrap()
+                .to_path_buf();
+            let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();
+            let _ = anki_connect::sync(&input_dir, parent_deck);
         }
         _ => unreachable!(),
     }

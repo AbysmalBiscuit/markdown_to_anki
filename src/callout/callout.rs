@@ -1,9 +1,9 @@
 use crate::callout::callout_error::CalloutError;
 use crate::callout::callout_type::CalloutType;
+use crate::error::GenericError;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rayon::prelude::*;
 use regex::Regex;
-use std::error::Error;
 use std::fs::read_to_string;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -35,7 +35,7 @@ impl Callout {
         }
     }
 
-    pub fn extract_callouts(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync>> {
+    pub fn extract_callouts(path: &Path) -> Result<Vec<Callout>, GenericError> {
         let content: String = read_to_string(path)?;
         let blocks: Vec<String> = content
             .split("\n> [!")

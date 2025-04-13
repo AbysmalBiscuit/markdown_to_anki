@@ -64,8 +64,8 @@ impl Callout {
         Ok(callouts)
     }
     fn sub_callout_to_html(&self) -> String {
-        let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
-        output.push(
+        let mut content = Vec::with_capacity((self.content.len() + 2) * 2);
+        content.push(
             self.content
                 .clone()
                 .par_iter()
@@ -81,7 +81,7 @@ impl Callout {
         );
         if !self.sub_callouts.is_empty() {
             for sub_callout in &self.sub_callouts {
-                output.push(sub_callout.sub_callout_to_html());
+                content.push(sub_callout.sub_callout_to_html());
             }
         }
         let header = if self.header.is_empty() {
@@ -90,31 +90,27 @@ impl Callout {
             self.header.clone()
         };
 
+        let content_text = if !content.is_empty() {
+            format!(
+                r#"<div class="callout-content">{0}</div>"#,
+                content
+                    .into_par_iter()
+                    .map(|content| format!(r#"<p dir="auto">{}</p>"#, content))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        } else {
+            "".to_string()
+        };
+
         format!(
-            r#"<div data-callout-metadata="" data-callout-fold="" data-callout="{0}" class="callout">
-    <div class="callout-title" dir="auto">
-      <div class="callout-icon">
-        {1}
-      </div>
-      <div class="callout-title-inner">{2}</div>
-    </div>
-    <div class="callout-content">
-      {3}
-    </div>
-  </div>"#,
-            self.callout_type,
-            "icon",
-            header,
-            output
-                .into_par_iter()
-                .map(|content| format!(r#"<p dir="auto">{}</p>"#, content))
-                .collect::<Vec<_>>()
-                .join("\n")
+            r#"<div data-callout="{0}" class="callout"><div class="callout-title"><div class="callout-icon"></div>{1}</div>{2}</div>"#,
+            self.callout_type, header, content_text
         )
     }
 
     pub fn to_anki_markdown_entry(&self, card_type: Option<&str>) -> String {
-        let card_type = card_type.unwrap_or("Basic");
+        let card_type = card_type.unwrap_or("note");
         let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
         output.push(self.content.join("\n"));
         if !self.sub_callouts.is_empty() {

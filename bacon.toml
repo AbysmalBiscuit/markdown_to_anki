@@ -14,3 +14,10 @@ command = ["cargo", "run", "markdown", "demo"]
 need_stdout = true
 allow_failures = true
 allow_warnings = true
+
+
+[jobs.sync-demo]
+command = ["cargo", "run", "sync", "demo", "Korean::Obsidian"]
+need_stdout = true
+allow_failures = true
+allow_warnings = true

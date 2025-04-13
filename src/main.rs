@@ -65,7 +65,7 @@ fn main() -> io::Result<()> {
 mod test {
     use std::env;
 
-    use crate::extract_callouts;
+    use crate::callout::callout::Callout;
 
     #[test]
     fn test_kr_words() {
@@ -73,8 +73,8 @@ mod test {
             Ok(value) => value,
             Err(err) => panic!("{}", err),
         };
-        let path = current_dir.join("words.md");
-        let callouts = match extract_callouts(&path) {
+        let path = current_dir.join("demo/words.md");
+        let callouts = match Callout::extract_callouts(&path) {
             Ok(value) => value,
             Err(err) => panic!("{}", err),
         };

@@ -43,7 +43,7 @@ impl Callout {
         }
     }
 
-    fn sub_callout_to_anki(&self) -> String {
+    fn sub_callout_to_card(&self) -> String {
         let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
         output.push(
             self.content
@@ -61,7 +61,7 @@ impl Callout {
         );
         if !self.sub_callouts.is_empty() {
             for sub_callout in &self.sub_callouts {
-                output.push(sub_callout.sub_callout_to_anki());
+                output.push(sub_callout.sub_callout_to_card());
             }
         }
         let header = if self.header.is_empty() {
@@ -94,7 +94,7 @@ impl Callout {
         // self.callout_to_html()
     }
 
-    pub fn to_anki_entry(&self, card_type: Option<&str>) -> String {
+    pub fn to_anki_markdown_entry(&self, card_type: Option<&str>) -> String {
         let card_type = card_type.unwrap_or("Basic");
         let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
         output.push(self.content.join("\n"));
@@ -102,7 +102,7 @@ impl Callout {
             for sub_callout in &self.sub_callouts {
                 match sub_callout.callout_type {
                     CalloutType::Links => continue,
-                    _ => output.push(sub_callout.sub_callout_to_anki()),
+                    _ => output.push(sub_callout.sub_callout_to_card()),
                 }
             }
         }

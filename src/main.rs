@@ -1,5 +1,6 @@
 mod callout;
 mod cli;
+mod deck;
 use callout::callout::Callout;
 use cli::cli;
 use jwalk::WalkDir;
@@ -13,14 +14,19 @@ use std::{
 
 fn extract_callouts(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + Sync>> {
     let content: String = read_to_string(path)?;
-    let blocks: Vec<_> = content
+    let blocks: Vec<String> = content
         .split("\n> [!")
         .skip(1)
-        .filter(|block| !block.trim().is_empty())
+        .collect::<Vec<_>>()
+        .into_par_iter()
+        .map(|block| block.trim())
+        .filter(|block| {
+            !block.is_empty() && (block.starts_with("word") || block.starts_with("rule"))
+        })
         .map(|block| format!("> [!{}", block))
-        .collect::<Vec<String>>();
+        .collect();
 
-    let callouts: Vec<_> = blocks
+    let callouts: Vec<Callout> = blocks
         .par_iter()
         .map(|block| {
             block
@@ -35,34 +41,34 @@ fn extract_callouts(path: &Path) -> Result<Vec<Callout>, Box<dyn Error + Send + 
     Ok(callouts)
 }
 
-fn create_anki_cards_file(input_dir: PathBuf, output_file_path: PathBuf) -> io::Result<()> {
-    // dbg!(&input_dir, &output_file_path);
+fn create_markdown_anki_cards_file(
+    input_dir: PathBuf,
+    output_file_path: PathBuf,
+) -> io::Result<()> {
     let markdown_files: Vec<_> = WalkDir::new(input_dir)
         .into_iter()
         .map(|entry| entry.unwrap().path())
         .filter(|path| {
-            path.extension().is_some_and(|ext| ext == "md")
-            // TODO: remove name check for final version
-            && path.file_name().is_some_and(|name| name.eq("rules.md"))
-            && path.ne(output_file_path.as_os_str())
+            path.extension().is_some_and(|ext| ext == "md") && path.ne(output_file_path.as_os_str())
         })
         .collect();
-    // dbg!(&markdown_files);
+
     let callouts: Vec<Callout> = markdown_files
         .par_iter()
         .map(|path| extract_callouts(path).unwrap())
         .flatten()
         .collect();
-    // dbg!(&callouts);
 
     let mut output_file = File::create(output_file_path)?;
+
     let content = callouts
         .par_iter()
-        .map(|callout| callout.to_anki_entry(None))
+        .map(|callout| callout.to_anki_markdown_entry(None))
         .collect::<Vec<_>>()
         .join("\n\n");
-    // dbg!(&content);
+
     output_file.write_all(content.as_bytes())?;
+
     Ok(())
 }
 
@@ -77,7 +83,7 @@ fn main() -> io::Result<()> {
             let output_file_path: PathBuf = sub_matches
                 .get_one::<PathBuf>("output_file")
                 .map_or_else(|| input_dir.join("Anki cards.md"), |p| p.to_path_buf());
-            create_anki_cards_file(input_dir, output_file_path)?
+            create_markdown_anki_cards_file(input_dir, output_file_path)?
         }
         _ => unreachable!(),
     }

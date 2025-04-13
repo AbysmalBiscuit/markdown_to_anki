@@ -27,13 +27,27 @@ fn create_markdown_anki_cards_file(
         })
         .collect::<Vec<_>>();
 
+    if markdown_files.is_empty() {
+        println!(
+            "Failed to find any markdown files in: '{}'",
+            input_dir.to_str().unwrap()
+        );
+        return Ok(());
+    }
+
+    println!("Found {} markdown files.", &markdown_files.len());
+
     let callouts: Vec<Callout> = markdown_files
         .par_iter()
         .map(|path| Callout::extract_callouts(path).unwrap())
         .flatten()
         .collect();
 
-    let mut output_file = File::create(output_file_path)?;
+    let num_callouts = &callouts.len();
+
+    println!("Found {} callouts", num_callouts);
+
+    let mut output_file = File::create(&output_file_path)?;
 
     let content = callouts
         .par_iter()
@@ -42,6 +56,12 @@ fn create_markdown_anki_cards_file(
         .join("\n\n");
 
     output_file.write_all(content.as_bytes())?;
+
+    println!(
+        "Wrote {} callouts to '{}'",
+        &num_callouts,
+        output_file_path.to_str().unwrap()
+    );
 
     Ok(())
 }

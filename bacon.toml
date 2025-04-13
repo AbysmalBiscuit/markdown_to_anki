@@ -17,7 +17,17 @@ allow_warnings = true
 
 
 [jobs.sync-demo]
-command = ["cargo", "run", "sync", "demo", "Korean::Obsidian"]
+command = [
+    "cargo",
+    "run",
+    "--",
+    "sync",
+    "demo",
+    "--deck",
+    "Korean::Obsidian",
+    "--note",
+    "Korean md2anki Basic (and reversed card)",
+]
 need_stdout = true
 allow_failures = true
 allow_warnings = true

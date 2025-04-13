@@ -63,7 +63,7 @@ impl Callout {
 
         Ok(callouts)
     }
-    fn sub_callout_to_card(&self) -> String {
+    fn sub_callout_to_html(&self) -> String {
         let mut output = Vec::with_capacity((self.content.len() + 2) * 2);
         output.push(
             self.content
@@ -81,7 +81,7 @@ impl Callout {
         );
         if !self.sub_callouts.is_empty() {
             for sub_callout in &self.sub_callouts {
-                output.push(sub_callout.sub_callout_to_card());
+                output.push(sub_callout.sub_callout_to_html());
             }
         }
         let header = if self.header.is_empty() {
@@ -111,7 +111,6 @@ impl Callout {
                 .collect::<Vec<_>>()
                 .join("\n")
         )
-        // self.callout_to_html()
     }
 
     pub fn to_anki_markdown_entry(&self, card_type: Option<&str>) -> String {
@@ -122,7 +121,7 @@ impl Callout {
             for sub_callout in &self.sub_callouts {
                 match sub_callout.callout_type {
                     CalloutType::Links => continue,
-                    _ => output.push(sub_callout.sub_callout_to_card()),
+                    _ => output.push(sub_callout.sub_callout_to_html()),
                 }
             }
         }
@@ -157,14 +156,9 @@ impl TryFrom<Vec<&str>> for Callout {
             None => panic!("{:?}", CalloutError::EmptyString),
         };
 
-        let caps = RE_HEADER.captures(header_line).unwrap_or_else(|| {
-            dbg!("panicking", &value);
-            panic!("Failed to parse header.");
-        });
-
-        //     .expect(
-        //     "first line should be formatted as a callout '> [!TYPE] TEXT TRANSLITERATION EMOJI'",
-        // );
+        let caps = RE_HEADER.captures(header_line).expect(
+            "first line should be formatted as a callout '> [!TYPE] TEXT TRANSLITERATION EMOJI'",
+        );
 
         let callout_type: CalloutType = caps[1].try_into()?;
         let header: String = caps

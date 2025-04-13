@@ -62,7 +62,7 @@ pub fn sync(path: &PathBuf, parent_deck: String) -> Result<(), GenericError> {
     dbg!(&decks[0].callouts[0]);
 
     let basics: Vec<Basic> = callouts.par_iter().map(Basic::from).collect();
-    dbg!(&basics);
+    // dbg!(&basics);
     Ok(())
 }
 

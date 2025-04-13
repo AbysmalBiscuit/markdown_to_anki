@@ -1,0 +1,45 @@
+blockquote {
+    padding-left: 12px;
+    border-inline-start: 2px solid rgb(180, 190, 254);
+    margin-left: none;
+}
+
+div {
+    display: block;
+    unicode-bidi: isolate;
+}
+
+[data-callout="abstract"] {
+    border-color: rgb(116, 199, 236, 60%);
+    background-color: rgb(116, 199, 236, 10%);
+}
+
+[data-callout="abstract"] .callout-title {
+    color: rgb(116, 199, 236);
+}
+
+
+.callout {
+    overflow: hidden;
+    border-style: solid;
+    border-width: 0.25px;
+    border-radius: 4px;
+    margin: 0;
+    mix-blend-mode: lighten;
+    padding: 12px 12px 12px 24px;
+}
+
+
+.callout-title {
+    padding: 0;
+    display: flex;
+    gap: 4px;
+    line-height: 1.25;
+    align-items: flex-start;
+}
+
+.callout-content {
+    overflow-x: auto;
+    padding: 0;
+    background-color: transparent;
+}

@@ -1,7 +1,8 @@
-use crate::callout::callout_error::CalloutError;
-use strum_macros::Display;
+use std::fmt::Display;
 
-#[derive(Display, Debug)]
+use crate::callout::callout_error::CalloutError;
+
+#[derive(Debug)]
 pub enum CalloutType {
     // Builtin callouts
     Abstract,
@@ -136,8 +137,8 @@ impl TryFrom<String> for CalloutType {
     }
 }
 
-impl From<CalloutType> for String {
-    fn from(val: CalloutType) -> Self {
+impl From<&CalloutType> for String {
+    fn from(val: &CalloutType) -> Self {
         match val {
             // Builtin
             CalloutType::Abstract => "abstract".into(),
@@ -176,5 +177,11 @@ impl From<CalloutType> for String {
             CalloutType::OverviewKR => "개요".into(),
             CalloutType::Important => "important".into(),
         }
+    }
+}
+
+impl Display for CalloutType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", String::from(self))
     }
 }

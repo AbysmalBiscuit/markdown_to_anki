@@ -5,7 +5,8 @@ use anki_bridge::prelude::*;
 use jwalk::WalkDir;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
-use std::io::Error;
+use std::fs::File;
+use std::io::{Error, Write};
 use std::path::PathBuf;
 
 use crate::error::GenericError;
@@ -60,6 +61,8 @@ pub fn sync(path: &PathBuf, parent_deck: String) -> Result<(), GenericError> {
         .unwrap();
 
     dbg!(&decks[0].callouts[0]);
+    // let mut f = File::create(path.join("out.html"))?;
+    // f.write_all(&decks[0].callouts[0].to_html().as_bytes())?;
 
     let basics: Vec<Basic> = callouts.par_iter().map(Basic::from).collect();
     // dbg!(&basics);

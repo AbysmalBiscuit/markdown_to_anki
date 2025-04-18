@@ -59,7 +59,7 @@ impl Callout {
                     .collect::<Vec<_>>()
             })
             .map(Callout::try_from)
-            .map(|callout| callout.unwrap())
+            .map(Result::unwrap)
             .collect();
 
         Ok(callouts)
@@ -112,6 +112,26 @@ impl Callout {
             self.callout_type, header, content_text
         )
     }
+
+    // pub fn to_html(&self) -> String {
+    //     let mut content: Vec<String> = Vec::with_capacity((&self.content.len() + 2) * 2);
+    //
+    //     content.push(self.content.join("\n"));
+    //     if !&self.sub_callouts.is_empty() {
+    //         for sub_callout in &self.sub_callouts {
+    //             match sub_callout.callout_type {
+    //                 CalloutType::Links => continue,
+    //                 _ => content.push(sub_callout.sub_callout_to_html()),
+    //             }
+    //         }
+    //     }
+    //
+    //     content
+    //         .par_iter()
+    //         .map(|text| text.trim())
+    //         .collect::<Vec<_>>()
+    //         .join("\n")
+    // }
 
     pub fn to_anki_markdown_entry(&self, card_type: Option<&str>) -> String {
         let note_type = card_type.unwrap_or("Basic");

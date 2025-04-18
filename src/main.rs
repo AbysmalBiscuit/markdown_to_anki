@@ -4,6 +4,7 @@ mod callout;
 mod cli;
 mod deck;
 mod error;
+mod markdown_to_html;
 mod note;
 use callout::callout::Callout;
 use cli::cli;

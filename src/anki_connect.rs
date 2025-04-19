@@ -1,4 +1,4 @@
-use crate::callout::callout::Callout;
+use crate::callout::Callout;
 use crate::deck::Deck;
 use crate::note::Basic;
 use anki_bridge::prelude::*;

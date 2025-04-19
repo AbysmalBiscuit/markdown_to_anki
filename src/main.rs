@@ -6,7 +6,7 @@ mod deck;
 mod error;
 mod markdown_to_html;
 mod note;
-use callout::callout::Callout;
+use callout::Callout;
 use cli::cli;
 use error::GenericError;
 use jwalk::WalkDir;

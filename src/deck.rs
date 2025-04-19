@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use strum_macros::Display;
 
-use crate::callout::callout::Callout;
+use crate::callout::Callout;
 
 #[derive(Display, Debug)]
 pub enum DeckError {

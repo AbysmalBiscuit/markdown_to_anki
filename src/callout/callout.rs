@@ -1,3 +1,4 @@
+use crate::callout;
 use crate::callout::callout_error::CalloutError;
 use crate::callout::callout_type::CalloutType;
 use crate::error::GenericError;
@@ -10,11 +11,20 @@ use std::path::Path;
 use std::sync::LazyLock;
 
 static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+(?: [\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+)*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)? *(.*?)?$"#).unwrap()
+    Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163A-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+(?: [\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163A-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+)*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)? *(.*?)?$"#).unwrap()
 });
+
+pub enum CalloutContent {
+    UnorderedListItem(String),
+    OrderedListLitem(String),
+    SubCalloutIndex(usize),
+    Blockquote(String),
+    HorizontalLine,
+}
 
 #[derive(Debug)]
 pub struct Callout {
+    pub id: String,
     pub callout_type: CalloutType,
     pub header: String,
     pub content: Vec<String>,
@@ -23,12 +33,14 @@ pub struct Callout {
 
 impl Callout {
     pub fn new(
+        id: String,
         callout_type: CalloutType,
         header: String,
         content: Vec<String>,
         sub_callouts: Vec<Callout>,
     ) -> Callout {
         Callout {
+            id,
             callout_type,
             header,
             content,
@@ -59,6 +71,7 @@ impl Callout {
                     .collect::<Vec<_>>()
             })
             .map(Callout::try_from)
+            .filter(Result::is_ok)
             .map(Result::unwrap)
             .collect();
 
@@ -157,6 +170,7 @@ impl Callout {
 impl Default for Callout {
     fn default() -> Self {
         Callout {
+            id: "".into(),
             callout_type: CalloutType::Word,
             header: "Default".into(),
             content: Vec::new(),
@@ -201,6 +215,7 @@ impl TryFrom<Vec<&str>> for Callout {
             content.push(transliteration);
         }
 
+        let mut id: &str = "";
         let mut sub_callouts: Vec<Callout> = Vec::with_capacity(content_length);
         let mut prev: &str = "";
         let mut line: &str;
@@ -230,9 +245,13 @@ impl TryFrom<Vec<&str>> for Callout {
             if line.starts_with("> > [!") {
                 let mut sub_callout_vector: Vec<&str> = Vec::with_capacity(content_length);
                 sub_callout_vector.push(line);
+                if next.starts_with("> >") {
+                    sub_callout_vector.push(next.strip_prefix("> ").unwrap_or(next));
+                    next = "";
+                }
                 'sub_callout: loop {
                     let next_line = value_iter.next().unwrap_or(&"");
-                    if next_line.is_empty() {
+                    if next_line.is_empty() || next_line.trim().eq(">") {
                         break 'sub_callout;
                     }
                     if !next_line.starts_with("> >") {
@@ -245,18 +264,29 @@ impl TryFrom<Vec<&str>> for Callout {
             } else {
                 line = line.strip_prefix("> ").unwrap_or("");
                 if line.starts_with('^') {
+                    id = line.strip_prefix("^").unwrap_or("");
                     break 'split_loop;
                 }
+
                 content.push(line.trim().to_string());
             }
         }
-        if content.last().map_or_else(|| "", |item| item).is_empty() {
-            content.pop();
+
+        while let Some(last) = content.last() {
+            if last.is_empty() {
+                content.pop();
+            } else {
+                break;
+            };
         }
-        if content.last().map_or_else(|| "", |item| item).is_empty() {
-            content.pop();
-        }
-        Ok(Callout::new(callout_type, header, content, sub_callouts))
+
+        Ok(Callout::new(
+            id.into(),
+            callout_type,
+            header,
+            content,
+            sub_callouts,
+        ))
     }
 }
 

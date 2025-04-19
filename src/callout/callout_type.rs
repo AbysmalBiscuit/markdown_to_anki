@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::callout::callout_error::CalloutError;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CalloutType {
     // Builtin callouts
     Abstract,

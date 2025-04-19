@@ -7,6 +7,7 @@ edition = "2024"
 anki_bridge = { version = "0.8.0", features = ["ureq_blocking"] }
 clap = "4.5.36"
 jwalk = "0.8.1"
+markdown = { version = "1.0.0-alpha.23", features = ["json", "log", "serde"] }
 rayon = "1.10.0"
 regex = "1.11.1"
 serde = "1.0.219"

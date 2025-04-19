@@ -46,6 +46,12 @@ hr {
     font-weight: 600;
 }
 
+.callout-icon {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+}
+
 .callout-icon::before {
     content: "";
     display: block;
@@ -53,6 +59,12 @@ hr {
     height: 24px;
     background-size: contain;
     background-repeat: no-repeat;
+}
+
+svg.svg-icon {
+    height: 18px;
+    width: 18px;
+    stroke-width: 1.75px;
 }
 
 /* Per callout type settings */

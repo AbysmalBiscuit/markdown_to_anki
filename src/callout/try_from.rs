@@ -1,3 +1,20 @@
+use super::callout_content::CalloutContent;
+use super::callout_error::CalloutError;
+use super::callout_type::CalloutType;
+use crate::Callout;
+use crate::error::GenericError;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::prelude::*;
+use regex::Regex;
+use std::fmt::Display;
+use std::fs::read_to_string;
+use std::path::Path;
+use std::sync::LazyLock;
+
+static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163A-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+(?: [\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF\uAC00-\uD7AF\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163A-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\]+)*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)? *(.*?)?$"#).unwrap()
+});
+
 impl TryFrom<Vec<&str>> for Callout {
     type Error = CalloutError;
     fn try_from(value: Vec<&str>) -> Result<Self, Self::Error> {

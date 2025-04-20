@@ -64,9 +64,8 @@ impl TryFrom<Vec<&str>> for Callout {
         'split_loop: loop {
             if !prev.is_empty() {
                 if prev.starts_with("> ^") {
-                    if id.is_empty() {
-                        id = prev.strip_prefix("> ^").unwrap_or("");
-                    }
+                    dbg!(prev);
+                    id = prev.strip_prefix("> ^").unwrap_or("");
                     break 'split_loop;
                 }
                 content.push(CalloutContent::Text(
@@ -89,7 +88,6 @@ impl TryFrom<Vec<&str>> for Callout {
             if line.is_empty() {
                 break 'split_loop;
             }
-            // dbg!([&prev, &line, &next]);
 
             if line.starts_with("> > [!") {
                 let mut sub_callout_vector: Vec<&str> = Vec::with_capacity(content_length);
@@ -112,9 +110,9 @@ impl TryFrom<Vec<&str>> for Callout {
                 sub_callouts.push(sub_callout_vector.try_into()?);
                 content.push(CalloutContent::SubCalloutIndex(sub_callouts.len() - 1));
             } else {
-                line = line.strip_prefix(">").unwrap_or(line);
+                line = line.strip_prefix(">").unwrap_or(line).trim();
                 if line.starts_with('^') {
-                    id = line.strip_prefix("^").unwrap_or("");
+                    id = line.strip_prefix("^").unwrap_or("").trim();
                     break 'split_loop;
                 }
                 content.push(CalloutContent::Text(line.trim().to_string()));

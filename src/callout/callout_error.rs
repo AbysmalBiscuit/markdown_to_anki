@@ -1,4 +1,4 @@
-use strum_macros::Display;
+use strum::Display;
 
 #[derive(Display, Debug)]
 pub enum CalloutError {

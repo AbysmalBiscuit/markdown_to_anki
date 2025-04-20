@@ -1,11 +1,12 @@
-use super::callout_content::CalloutContent;
-use super::callout_error::CalloutError;
 use super::callout_type::CalloutType;
+use super::content::CalloutContent;
+use super::error::CalloutError;
 use crate::Callout;
 use crate::error::GenericError;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rayon::prelude::*;
 use regex::Regex;
+use std::collections::VecDeque;
 use std::fmt::Display;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -63,9 +64,18 @@ impl TryFrom<Vec<&str>> for Callout {
         'split_loop: loop {
             if !prev.is_empty() {
                 if prev.starts_with("> ^") {
+                    if id.is_empty() {
+                        id = prev.strip_prefix("> ^").unwrap_or("");
+                    }
                     break 'split_loop;
                 }
-                content.push(CalloutContent::Text(prev.to_string()));
+                content.push(CalloutContent::Text(
+                    prev.to_string()
+                        .strip_prefix(">")
+                        .unwrap_or(prev)
+                        .trim()
+                        .to_string(),
+                ));
                 prev = "";
             }
             if !next.is_empty() {
@@ -79,6 +89,7 @@ impl TryFrom<Vec<&str>> for Callout {
             if line.is_empty() {
                 break 'split_loop;
             }
+            // dbg!([&prev, &line, &next]);
 
             if line.starts_with("> > [!") {
                 let mut sub_callout_vector: Vec<&str> = Vec::with_capacity(content_length);
@@ -97,22 +108,32 @@ impl TryFrom<Vec<&str>> for Callout {
                         break 'sub_callout;
                     }
                     sub_callout_vector.push(next_line);
-                    content.push(CalloutContent::SubCalloutIndex(
-                        sub_callout_vector.len() - 1,
-                    ));
                 }
                 sub_callouts.push(sub_callout_vector.try_into()?);
+                content.push(CalloutContent::SubCalloutIndex(sub_callouts.len() - 1));
             } else {
-                line = line.strip_prefix("> ").unwrap_or("");
+                line = line.strip_prefix(">").unwrap_or(line);
                 if line.starts_with('^') {
                     id = line.strip_prefix("^").unwrap_or("");
                     break 'split_loop;
                 }
-
                 content.push(CalloutContent::Text(line.trim().to_string()));
             }
         }
+        // Trim leading empty lines
+        let mut to_slice = 0;
+        let mut content_iter = content.iter();
+        while let Some(CalloutContent::Text(first)) = content_iter.next() {
+            if first.is_empty() || first.eq("---") {
+                to_slice += 1;
+            } else {
+                break;
+            }
+        }
 
+        content = content[to_slice..].to_vec();
+
+        // Trim trailing empty lines
         while let Some(CalloutContent::Text(last)) = content.last() {
             if last.is_empty() {
                 content.pop();

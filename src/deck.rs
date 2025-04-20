@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use strum_macros::Display;
+use strum::Display;
 
 use crate::callout::Callout;
 

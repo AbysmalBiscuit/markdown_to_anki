@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::callout::{Callout, callout_type::CalloutType};
+use crate::callout::{Callout, callout_content::CalloutContent, callout_type::CalloutType};
 
 #[derive(Debug)]
 pub struct Word {
@@ -44,26 +44,27 @@ pub struct Basic {
 
 impl From<&Callout> for Basic {
     fn from(value: &Callout) -> Self {
-        let mut content = Vec::with_capacity((value.content.len() + 2) * 2);
-        content.push(value.content.join("\n"));
-        if !value.sub_callouts.is_empty() {
-            for sub_callout in &value.sub_callouts {
-                match sub_callout.callout_type {
-                    CalloutType::Links => continue,
-                    _ => content.push(sub_callout.sub_callout_to_html()),
-                }
-            }
-        }
-
         // TODO: parse lines starting with - into unordered lists
 
         // TODO: parse lines starting with \d+\. into ordered lists
 
         Basic {
             front: value.header.clone(),
-            back: content
+            back: value
+                .content
                 .par_iter()
-                .map(|text| text.trim())
+                .filter_map(|item| match item {
+                    CalloutContent::Text(text) => Some(text).cloned(),
+                    CalloutContent::SubCalloutIndex(index) => value
+                        .sub_callouts
+                        .get(*index)
+                        .and_then(|sub_callout| match sub_callout.callout_type {
+                            CalloutType::Links => None,
+                            _ => Some(sub_callout.to_html(None)),
+                        }),
+                    _ => None,
+                })
+                .map(|text| text.trim().to_string())
                 .collect::<Vec<_>>()
                 .join("\n"),
         }

@@ -5,4 +5,5 @@ pub enum CalloutError {
     EmptyString,
     UnknownType,
     FailedToParseHeader,
+    UnknownContentType,
 }

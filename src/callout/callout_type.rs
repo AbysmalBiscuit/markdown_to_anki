@@ -1,187 +1,100 @@
 use std::fmt::Display;
 
-use crate::callout::callout_error::CalloutError;
+use strum::{Display, EnumProperty, EnumString};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Display, EnumString, EnumProperty, PartialEq, Eq)]
+#[strum(serialize_all = "kebab-case")]
 pub enum CalloutType {
     // Builtin callouts
+    #[strum(to_string = "abstract", serialize = "개요", props(ko = "개요"))]
     Abstract,
+    #[strum(to_string = "attention", serialize = "알림", props(ko = "알림"))]
     Attention,
+    #[strum(to_string = "bug", serialize = "버그", props(ko = "버그"))]
     Bug,
+    #[strum(to_string = "caution", serialize = "주의", props(ko = "주의"))]
     Caution,
+    #[strum(to_string = "check", serialize = "확인됨", props(ko = "확인됨"))]
     Check,
+    #[strum(to_string = "cite", serialize = "인용", props(ko = "인용"))]
     Cite,
+    #[strum(to_string = "danger", serialize = "위험", props(ko = "위험"))]
     Danger,
+    #[strum(to_string = "done", serialize = "완료", props(ko = "완료"))]
     Done,
-    ErrorCallout,
+    #[strum(to_string = "error", serialize = "오류", props(ko = "오류"))]
+    Error,
+    #[strum(to_string = "example", serialize = "예", props(ko = "예"))]
     Example,
+    #[strum(to_string = "fail", serialize = "실패", props(ko = "실패"))]
     Fail,
+    // TODO: find a better way to distinguish Fail and Failure in korean
+    #[strum(to_string = "failure", serialize = "실패", props(ko = "실패"))]
     Failure,
+    #[strum(
+        to_string = "faq",
+        serialize = "자주-묻는-질문",
+        props(ko = "자주-묻는-질문")
+    )]
     Faq,
+    #[strum(to_string = "help", serialize = "도움말", props(ko = "도움말"))]
     Help,
+    #[strum(to_string = "hint", serialize = "힌트", props(ko = "힌트"))]
     Hint,
-    Info,
-    Links,
-    Missing,
-    Note,
-    Question,
-    Quote,
-    Success,
-    Summary,
-    Tip,
-    Tldr,
-    Todo,
-    Warning,
-    // Custom callouts
-    Word,
-    Rule,
+    #[strum(to_string = "important", serialize = "중요", props(ko = "중요"))]
     Important,
-    ExampleKR,
-    ExampleSentenceKR,
-    OverviewKR,
+    #[strum(to_string = "info", serialize = "정보", props(ko = "정보"))]
+    Info,
+    #[strum(to_string = "missing", serialize = "누락", props(ko = "누락"))]
+    Missing,
+    #[strum(to_string = "note", serialize = "노트", props(ko = "노트"))]
+    Note,
+    #[strum(to_string = "question", serialize = "질문", props(ko = "질문"))]
+    Question,
+    #[strum(to_string = "quote", serialize = "인용", props(ko = "인용"))]
+    Quote,
+    #[strum(to_string = "success", serialize = "성공", props(ko = "성공"))]
+    Success,
+    #[strum(to_string = "summary", serialize = "요약", props(ko = "요약"))]
+    Summary,
+    #[strum(to_string = "tip", serialize = "팁", props(ko = "팁"))]
+    Tip,
+    #[strum(to_string = "tldr", serialize = "요약", props(ko = "요약"))]
+    Tldr,
+    #[strum(to_string = "todo", serialize = "작업", props(ko = "작업"))]
+    Todo,
+    #[strum(to_string = "warning", serialize = "경고", props(ko = "경고"))]
+    Warning,
+
+    // Custom cto_string = "",allouts
+    #[strum(to_string = "links", serialize = "링크", props(ko = "링크"))]
+    Links,
+    #[strum(
+        to_string = "example-sentence",
+        serialize = "예문-문장",
+        props(ko = "예")
+    )]
+    ExampleSentence,
+    #[strum(to_string = "exception", serialize = "예외", props(ko = "예외"))]
     Exception,
+    #[strum(to_string = "reference", serialize = "참고", props(ko = "참고"))]
+    Reference,
+    #[strum(to_string = "rule", serialize = "규칙", props(ko = "규칙"))]
+    Rule,
+    #[strum(to_string = "word", serialize = "단어", props(ko = "단어"))]
+    Word,
+    #[strum(to_string = "conjugation", serialize = "활용", props(ko = "활용"))]
+    Conjugation,
 }
 
 impl CalloutType {
-    pub fn callout_default_header(&self) -> String {
-        match self {
-            // Builtin
-            CalloutType::Abstract => "Abstract".into(),
-            CalloutType::Attention => "Attention".into(),
-            CalloutType::Bug => "Bug".into(),
-            CalloutType::Caution => "Caution".into(),
-            CalloutType::Check => "Check".into(),
-            CalloutType::Cite => "Cite".into(),
-            CalloutType::Danger => "Danger".into(),
-            CalloutType::Done => "Done".into(),
-            CalloutType::ErrorCallout => "Errorcallout".into(),
-            CalloutType::Example => "Example".into(),
-            CalloutType::Exception => "Exception".into(),
-            CalloutType::Faq => "Faq".into(),
-            CalloutType::Fail => "Fail".into(),
-            CalloutType::Failure => "Failure".into(),
-            CalloutType::Help => "Help".into(),
-            CalloutType::Hint => "Hint".into(),
-            CalloutType::Info => "Info".into(),
-            CalloutType::Links => "Links".into(),
-            CalloutType::Missing => "Missing".into(),
-            CalloutType::Note => "Note".into(),
-            CalloutType::Question => "Question".into(),
-            CalloutType::Quote => "Quote".into(),
-            CalloutType::Success => "Success".into(),
-            CalloutType::Summary => "Summary".into(),
-            CalloutType::Tldr => "Tldr".into(),
-            CalloutType::Tip => "Tip".into(),
-            CalloutType::Todo => "Todo".into(),
-            CalloutType::Warning => "Warning".into(),
-            // Custom
-            CalloutType::Word => "Word".into(),
-            CalloutType::Rule => "Rule".into(),
-            CalloutType::ExampleKR => "예".into(),
-            CalloutType::ExampleSentenceKR => "예문-문장".into(),
-            CalloutType::OverviewKR => "개요".into(),
-            CalloutType::Important => "important".into(),
-        }
-    }
-}
-
-impl TryFrom<&str> for CalloutType {
-    type Error = CalloutError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            // Builtin
-            "abstract" => Ok(CalloutType::Abstract),
-            "attention" => Ok(CalloutType::Attention),
-            "bug" => Ok(CalloutType::Bug),
-            "caution" => Ok(CalloutType::Caution),
-            "check" => Ok(CalloutType::Check),
-            "cite" => Ok(CalloutType::Cite),
-            "danger" => Ok(CalloutType::Danger),
-            "done" => Ok(CalloutType::Done),
-            "errorcallout" => Ok(CalloutType::ErrorCallout),
-            "example" => Ok(CalloutType::Example),
-            "exception" => Ok(CalloutType::Exception),
-            "faq" => Ok(CalloutType::Faq),
-            "fail" => Ok(CalloutType::Fail),
-            "failure" => Ok(CalloutType::Failure),
-            "help" => Ok(CalloutType::Help),
-            "hint" => Ok(CalloutType::Hint),
-            "info" => Ok(CalloutType::Info),
-            "links" => Ok(CalloutType::Links),
-            "missing" => Ok(CalloutType::Missing),
-            "note" => Ok(CalloutType::Note),
-            "question" => Ok(CalloutType::Question),
-            "quote" => Ok(CalloutType::Quote),
-            "success" => Ok(CalloutType::Success),
-            "summary" => Ok(CalloutType::Summary),
-            "tldr" => Ok(CalloutType::Tldr),
-            "tip" => Ok(CalloutType::Tip),
-            "todo" => Ok(CalloutType::Todo),
-            "warning" => Ok(CalloutType::Warning),
-            // Custom
-            "word" => Ok(CalloutType::Word),
-            "rule" => Ok(CalloutType::Rule),
-            "예" => Ok(CalloutType::ExampleKR),
-            "예문-문장" => Ok(CalloutType::ExampleSentenceKR),
-            "개요" => Ok(CalloutType::OverviewKR),
-            "important" => Ok(CalloutType::Important),
-            _ => Err(CalloutError::UnknownType),
-        }
-    }
-}
-impl TryFrom<String> for CalloutType {
-    type Error = CalloutError;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        CalloutType::try_from(value.as_str())
-    }
-}
-
-impl From<&CalloutType> for String {
-    fn from(val: &CalloutType) -> Self {
-        match val {
-            // Builtin
-            CalloutType::Abstract => "abstract".into(),
-            CalloutType::Attention => "attention".into(),
-            CalloutType::Bug => "bug".into(),
-            CalloutType::Caution => "caution".into(),
-            CalloutType::Check => "check".into(),
-            CalloutType::Cite => "cite".into(),
-            CalloutType::Danger => "danger".into(),
-            CalloutType::Done => "done".into(),
-            CalloutType::ErrorCallout => "errorcallout".into(),
-            CalloutType::Example => "example".into(),
-            CalloutType::Exception => "exception".into(),
-            CalloutType::Faq => "faq".into(),
-            CalloutType::Fail => "fail".into(),
-            CalloutType::Failure => "failure".into(),
-            CalloutType::Help => "help".into(),
-            CalloutType::Hint => "hint".into(),
-            CalloutType::Info => "info".into(),
-            CalloutType::Links => "links".into(),
-            CalloutType::Missing => "missing".into(),
-            CalloutType::Note => "note".into(),
-            CalloutType::Question => "question".into(),
-            CalloutType::Quote => "quote".into(),
-            CalloutType::Success => "success".into(),
-            CalloutType::Summary => "summary".into(),
-            CalloutType::Tldr => "tldr".into(),
-            CalloutType::Tip => "tip".into(),
-            CalloutType::Todo => "todo".into(),
-            CalloutType::Warning => "warning".into(),
-            // Custom
-            CalloutType::Word => "word".into(),
-            CalloutType::Rule => "rule".into(),
-            CalloutType::ExampleKR => "예".into(),
-            CalloutType::ExampleSentenceKR => "예문-문장".into(),
-            CalloutType::OverviewKR => "개요".into(),
-            CalloutType::Important => "important".into(),
-        }
-    }
-}
-
-impl Display for CalloutType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", String::from(self))
+    pub fn get_name(&self, lang_iso: Option<&str>) -> String {
+        let default = &self.to_string();
+        let name = if let Some(lang) = lang_iso {
+            self.get_str(lang).unwrap_or(default)
+        } else {
+            default
+        };
+        name.to_string()
     }
 }

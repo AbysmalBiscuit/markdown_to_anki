@@ -103,7 +103,7 @@ fn main() -> Result<(), GenericError> {
 mod test {
     use std::env;
 
-    use crate::callout::callout::Callout;
+    use crate::callout::Callout;
 
     #[test]
     fn test_kr_words() {

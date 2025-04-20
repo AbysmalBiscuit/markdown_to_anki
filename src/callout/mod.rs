@@ -73,7 +73,7 @@ impl Callout {
         Ok(callouts)
     }
 
-    pub fn sub_callout_to_html(&self) -> String {
+    pub fn sub_callout_to_html(&self, header_lang: Option<&str>) -> String {
         let mut content = Vec::with_capacity((self.content.len() + 2) * 2);
         content.push(
             self.content
@@ -92,12 +92,12 @@ impl Callout {
 
         if !self.sub_callouts.is_empty() {
             for sub_callout in &self.sub_callouts {
-                content.push(sub_callout.sub_callout_to_html());
+                content.push(sub_callout.sub_callout_to_html(header_lang));
             }
         }
 
         let header = if self.header.is_empty() {
-            self.callout_type.callout_default_header()
+            self.callout_type.get_name(header_lang)
         } else {
             self.header.clone()
         };
@@ -168,7 +168,7 @@ impl Callout {
             for sub_callout in &self.sub_callouts {
                 match sub_callout.callout_type {
                     CalloutType::Links => continue,
-                    _ => content.push(sub_callout.sub_callout_to_html()),
+                    _ => content.push(sub_callout.sub_callout_to_html(None)),
                 }
             }
         }

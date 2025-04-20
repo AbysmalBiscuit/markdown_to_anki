@@ -29,8 +29,10 @@ impl TryFrom<Vec<&str>> for Callout {
         let caps = RE_HEADER.captures(header_line).expect(
             "first line should be formatted as a callout '> [!TYPE] TEXT TRANSLITERATION EMOJI'",
         );
-
-        let callout_type: CalloutType = caps[1].try_into()?;
+        let callout_type: CalloutType = caps[1].try_into().map_err(|e| match e {
+            strum::ParseError::VariantNotFound => CalloutError::UnknownType,
+            _ => CalloutError::UnknownType,
+        })?;
         let header: String = caps
             .get(2)
             .map_or(String::new(), |m| m.as_str().to_string());

@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::callout::{Callout, callout_content::CalloutContent, callout_type::CalloutType};
+use crate::callout::{Callout, callout_type::CalloutType, content::CalloutContent};
 
 #[derive(Debug)]
 pub struct Word {

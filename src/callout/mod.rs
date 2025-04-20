@@ -1,12 +1,12 @@
-pub(crate) mod callout_content;
-pub(crate) mod callout_error;
 pub(crate) mod callout_type;
+pub(crate) mod content;
+pub(crate) mod error;
 pub(crate) mod try_from;
 
 use crate::error::GenericError;
-use callout_content::CalloutContent;
-use callout_error::CalloutError;
 use callout_type::CalloutType;
+use content::CalloutContent;
+use error::CalloutError;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rayon::prelude::*;
 use regex::Regex;

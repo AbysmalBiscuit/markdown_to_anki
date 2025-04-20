@@ -22,7 +22,7 @@ pub struct Callout {
     pub id: String,
     pub callout_type: CalloutType,
     pub header: String,
-    pub content: Vec<String>,
+    pub content: Vec<CalloutContent>,
     pub sub_callouts: Vec<Callout>,
 }
 
@@ -31,7 +31,7 @@ impl Callout {
         id: String,
         callout_type: CalloutType,
         header: String,
-        content: Vec<String>,
+        content: Vec<CalloutContent>,
         sub_callouts: Vec<Callout>,
     ) -> Callout {
         Callout {
@@ -73,28 +73,26 @@ impl Callout {
         Ok(callouts)
     }
 
-    pub fn sub_callout_to_html(&self, header_lang: Option<&str>) -> String {
+    pub fn to_html(&self, header_lang: Option<&str>) -> String {
         let mut content = Vec::with_capacity((self.content.len() + 2) * 2);
         content.push(
             self.content
                 .clone()
                 .par_iter()
-                .map(|line| {
-                    if line.starts_with("> ") {
-                        line.strip_prefix("> ").unwrap().to_string()
-                    } else {
-                        line.to_string()
-                    }
+                .filter_map(|item| match item {
+                    CalloutContent::Text(text) => Some(text).cloned(),
+                    CalloutContent::SubCalloutIndex(index) => self
+                        .sub_callouts
+                        .get(*index)
+                        .and_then(|sub_callout| match sub_callout.callout_type {
+                            CalloutType::Links => None,
+                            _ => Some(sub_callout.to_html(None)),
+                        }),
+                    _ => None,
                 })
                 .collect::<Vec<_>>()
                 .join("\n"),
         );
-
-        if !self.sub_callouts.is_empty() {
-            for sub_callout in &self.sub_callouts {
-                content.push(sub_callout.sub_callout_to_html(header_lang));
-            }
-        }
 
         let header = if self.header.is_empty() {
             self.callout_type.get_name(header_lang)
@@ -121,62 +119,28 @@ impl Callout {
         )
     }
 
-    // pub fn content_to_html(&self) -> String {
-    //     let mut html = String::new();
-    //
-    //     let mut in_ol = false;
-    //     let mut in_ul = false;
-    //
-    //     for item in &self.content {
-    //         match item {
-    //             CalloutContent::Text(value) => html.push_str(value),
-    //             CalloutContent::UnorderedListItem(value) =>    ,
-    //             CalloutContent::OrderedListItem(_) => todo!(),
-    //             CalloutContent::SubCalloutIndex(_) => todo!(),
-    //             CalloutContent::Blockquote(_) => todo!(),
-    //             CalloutContent::HorizontalLine => todo!(),
-    //             CalloutContent::UnorderedListStart => todo!(),
-    //             CalloutContent::UnorderedListEnd => todo!(),
-    //             CalloutContent::OrderedListStart => todo!(),
-    //             CalloutContent::OrderedListEnd => todo!(),
-    //         };
-    //     }
-    //     let mut content: Vec<String> = Vec::with_capacity((&self.content.len() + 2) * 2);
-    //
-    //     content.push(self.content.join("\n"));
-    //     if !&self.sub_callouts.is_empty() {
-    //         for sub_callout in &self.sub_callouts {
-    //             match sub_callout.callout_type {
-    //                 CalloutType::Links => continue,
-    //                 _ => content.push(sub_callout.sub_callout_to_html()),
-    //             }
-    //         }
-    //     }
-    //
-    //     content
-    //         .par_iter()
-    //         .map(|text| text.trim())
-    //         .collect::<Vec<_>>()
-    //         .join("\n")
-    // }
-
     pub fn to_anki_markdown_entry(&self, card_type: Option<&str>) -> String {
-        let note_type = card_type.unwrap_or("Basic");
-        let mut content = Vec::with_capacity((self.content.len() + 2) * 2);
-        content.push(self.content.join("\n"));
-        if !self.sub_callouts.is_empty() {
-            for sub_callout in &self.sub_callouts {
-                match sub_callout.callout_type {
-                    CalloutType::Links => continue,
-                    _ => content.push(sub_callout.sub_callout_to_html(None)),
-                }
-            }
-        }
         format!(
             "<pre>\nSTART\n{}\n{}\nBack: {}\nEND\n</pre>",
-            note_type,
+            card_type.unwrap_or("Basic"),
             self.header,
-            content.join("\n")
+            self.content
+                .par_iter()
+                .filter_map(|item| match item {
+                    CalloutContent::Text(text) => Some(text).cloned(),
+                    CalloutContent::SubCalloutIndex(index) => {
+                        self.sub_callouts.get(*index).and_then(|sub_callout| {
+                            match sub_callout.callout_type {
+                                CalloutType::Links => None,
+                                _ => Some(sub_callout.to_html(None)),
+                            }
+                        })
+                    }
+                    _ => None,
+                })
+                .map(|item| item.to_owned())
+                .collect::<Vec<String>>()
+                .join("\n")
         )
     }
 }

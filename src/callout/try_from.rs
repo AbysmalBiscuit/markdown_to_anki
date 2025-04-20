@@ -45,12 +45,12 @@ impl TryFrom<Vec<&str>> for Callout {
             .map(|m| m.as_str().trim().to_string())
             .unwrap_or("".to_string());
 
-        let mut content: Vec<String> = Vec::with_capacity(content_length);
+        let mut content: Vec<CalloutContent> = Vec::with_capacity(content_length);
         if !emoji.is_empty() {
-            content.push(emoji);
+            content.push(CalloutContent::Text(emoji));
         }
         if !transliteration.is_empty() {
-            content.push(transliteration);
+            content.push(CalloutContent::Text(transliteration));
         }
 
         let mut id: &str = "";
@@ -65,7 +65,7 @@ impl TryFrom<Vec<&str>> for Callout {
                 if prev.starts_with("> ^") {
                     break 'split_loop;
                 }
-                content.push(prev.to_string());
+                content.push(CalloutContent::Text(prev.to_string()));
                 prev = "";
             }
             if !next.is_empty() {
@@ -97,6 +97,9 @@ impl TryFrom<Vec<&str>> for Callout {
                         break 'sub_callout;
                     }
                     sub_callout_vector.push(next_line);
+                    content.push(CalloutContent::SubCalloutIndex(
+                        sub_callout_vector.len() - 1,
+                    ));
                 }
                 sub_callouts.push(sub_callout_vector.try_into()?);
             } else {
@@ -106,16 +109,16 @@ impl TryFrom<Vec<&str>> for Callout {
                     break 'split_loop;
                 }
 
-                content.push(line.trim().to_string());
+                content.push(CalloutContent::Text(line.trim().to_string()));
             }
         }
 
-        while let Some(last) = content.last() {
+        while let Some(CalloutContent::Text(last)) = content.last() {
             if last.is_empty() {
                 content.pop();
             } else {
                 break;
-            };
+            }
         }
 
         Ok(Callout::new(

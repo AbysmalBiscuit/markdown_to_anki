@@ -54,10 +54,10 @@ pub fn cli() -> Command {
                     .default_value("md2anki")
                 )
                 .arg(
-                    Arg::new("note_type")
-                        .help("name of the note type that should be used for the cards")
-                        .long("note")
-                        .short('n')
+                    Arg::new("model_name")
+                        .help("name of the card model that should be used for the cards")
+                        .long("model")
+                        .short('m')
                         .default_value("Korean md2anki Basic (and reversed card)")
                 )
                 .arg(

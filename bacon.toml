@@ -1,3 +1,6 @@
+[env]
+RUST_BACKTRACE = "1"
+
 [jobs.cli-vault-korean]
 command = [
     "cargo",
@@ -22,10 +25,10 @@ command = [
     "run",
     "--",
     "sync",
-    "demo",
+    "test",
     "--deck",
     "Korean::Obsidian",
-    "--note",
+    "--model",
     "Korean md2anki Basic (and reversed card)",
 ]
 need_stdout = true

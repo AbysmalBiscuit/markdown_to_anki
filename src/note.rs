@@ -38,35 +38,14 @@ struct Rule {
 
 #[derive(Debug)]
 pub struct Basic {
-    front: String,
-    back: String,
+    pub front: String,
+    pub back: String,
 }
-
-impl From<&Callout> for Basic {
-    fn from(value: &Callout) -> Self {
-        // TODO: parse lines starting with - into unordered lists
-
-        // TODO: parse lines starting with \d+\. into ordered lists
-
+impl Basic {
+    pub fn from_callout(callout: &Callout, header_lang: Option<&str>) -> Self {
         Basic {
-            front: value.header.clone(),
-            back: value
-                .content
-                .par_iter()
-                .filter_map(|item| match item {
-                    CalloutContent::Text(text) => Some(text).cloned(),
-                    CalloutContent::SubCalloutIndex(index) => value
-                        .sub_callouts
-                        .get(*index)
-                        .and_then(|sub_callout| match sub_callout.callout_type {
-                            CalloutType::Links => None,
-                            _ => Some(sub_callout.to_html(None)),
-                        }),
-                    _ => None,
-                })
-                .map(|text| text.trim().to_string())
-                .collect::<Vec<_>>()
-                .join("\n"),
+            front: callout.header.clone(),
+            back: callout.content_to_html(header_lang),
         }
     }
 }

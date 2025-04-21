@@ -22,7 +22,8 @@ impl Basic {
 impl AddNote for Basic {
     fn add_note(
         &self,
-        deck: &ankiconnect_rs::Deck,
+        deck_name: &ankiconnect_rs::Deck,
+        model: &ankiconnect_rs::Model,
         note: ankiconnect_rs::Note,
         allow_duplicate: bool,
         duplicate_scope: Option<ankiconnect_rs::DuplicateScope>,

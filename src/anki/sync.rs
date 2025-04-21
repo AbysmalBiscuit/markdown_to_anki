@@ -1,31 +1,27 @@
 use crate::callout::Callout;
 use crate::deck::Deck;
-use crate::note::Basic;
-use anki_bridge::prelude::*;
+use crate::find_markdown_files::find_markdown_files;
+use crate::note::basic::Basic;
+use ankiconnect_rs::{AnkiClient, DuplicateScope, NoteBuilder};
 use jwalk::WalkDir;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
+use std::error::Error;
 use std::fs::File;
-use std::io::{Error, Write};
+use std::io::{Error as IOError, Write};
 use std::path::PathBuf;
 
 use crate::error::GenericError;
-
-fn find_markdown_files(input_dir: &PathBuf) -> Result<Vec<PathBuf>, Error> {
-    Ok(WalkDir::new(input_dir)
-        .into_iter()
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| path.extension().is_some_and(|ext| ext == "md"))
-        .collect::<Vec<_>>())
-}
 
 // fn request(action, )
 pub fn sync(
     path: &PathBuf,
     parent_deck: String,
+    model_name: String,
     header_lang: Option<&str>,
 ) -> Result<(), GenericError> {
-    let client = AnkiClient::default();
+    // Create a client with default connection (localhost:8765)
+    let client = AnkiClient::new();
 
     let markdown_files = find_markdown_files(path)?;
 
@@ -59,10 +55,41 @@ pub fn sync(
         .flatten()
         .collect::<Vec<_>>();
 
-    let decks_names: Vec<String> = client.request(DeckNamesRequest {}).unwrap();
-    let deck_stats: HashMap<usize, GetDeckStatsResponse> = client
-        .request(GetDeckStatsRequest { decks: decks_names })
-        .unwrap();
+    // Get available decks and models
+    let decks = client.decks().get_all()?;
+    let models = client.models().get_all()?;
+    let selected_model = models
+        .par_iter()
+        .find_any(|model| model.name().eq(&model_name));
+    dbg!(selected_model);
+    for (i, model) in models.iter().enumerate() {
+        println!("\n{}. Model: {} (ID: {})", i, model.name(), model.id().0);
+
+        // Print field information
+        println!("   Fields ({}):", model.fields().len());
+        for field in model.fields() {
+            println!("   - {} (position: {})", field.name(), field.ord());
+
+            // Add some helpful info about likely roles
+            if field.is_front() {
+                println!("     Likely role: Question/Front field");
+            } else if field.is_back() {
+                println!("     Likely role: Answer/Back field");
+            }
+        }
+    }
+
+    // Build a note with the selected model
+    let selected_model = &models[0];
+    dbg!(selected_model);
+    // let front_field = selected_model.field_ref("Front").unwrap();
+    // let back_field = selected_model.field_ref("Back").unwrap();
+    //
+    // let note = NoteBuilder::new(selected_model.clone())
+    //     .with_field(front_field, "¿Dónde está la biblioteca?")
+    //     .with_field(back_field, "Where is the library?")
+    //     .with_tag("spanish-vocab")
+    //     .build()?;
 
     // dbg!(markdown::to_html("foo\n\nbar"));
     // dbg!(&decks[0].callouts[0]);
@@ -77,6 +104,11 @@ pub fn sync(
     let mut f = File::create(path.join("out.html"))?;
     f.write_all(&basics[0].back.as_bytes())?;
     dbg!(&basics);
+
+    // Add the note to the first deck
+    // let note_id = client.cards().add_note(&decks[0], note, false, None)?;
+    // println!("Added note with ID: {}", note_id.value());
+
     Ok(())
 }
 

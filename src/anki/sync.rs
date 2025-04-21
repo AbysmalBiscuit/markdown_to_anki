@@ -3,11 +3,12 @@ use crate::callout::Callout;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::basic::Basic;
-use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder};
+use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder, NoteId};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use tracing::{error, info};
 
 use crate::error::GenericError;
 use crate::progress::{LOOKING_GLASS, print_step};
@@ -119,7 +120,7 @@ pub fn sync(
         .filter(Result::is_ok)
         .map(Result::unwrap)
         .collect();
-    dbg!(&notes);
+    // dbg!(&notes);
 
     // dbg!(markdown::to_html("foo\n\nbar"));
     // dbg!(&decks[0].callouts[0]);
@@ -131,9 +132,20 @@ pub fn sync(
     // dbg!(&selected_deck);
 
     // Add the note to the first deck
+    //
+    let mut note_id: NoteId = NoteId(0);
     for note in notes {
-        let note_id = client.cards().add_note(&selected_deck, note, false, None)?;
-        println!("Added note with ID: {}", note_id.value());
+        match client
+            .cards()
+            .add_note(&selected_deck, note.clone(), false, None)
+        {
+            Ok(id) => {
+                note_id = id;
+                info!("Added note with ID: {}", note_id.value())
+            }
+            Err(err) => error!("Failed to create note for: {:?}", note),
+        };
+        // println!("Added note with ID: {}", note_id.value());
     }
 
     Ok(())

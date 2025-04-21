@@ -4,11 +4,12 @@ use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::basic::Basic;
 use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder, NoteId};
+use indicatif::ProgressBar;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use tracing::{error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::error::GenericError;
 use crate::progress::{LOOKING_GLASS, print_step};
@@ -46,14 +47,14 @@ pub fn sync(
     let markdown_files = find_markdown_files(path)?;
 
     if markdown_files.is_empty() {
-        println!(
+        warn!(
             "Failed to find any markdown files in: '{}'",
             path.to_str().unwrap()
         );
         return Ok(());
     }
 
-    println!("Found {} markdown files", &markdown_files.len());
+    info!("Found {} markdown files", &markdown_files.len());
 
     let decks = markdown_files
         .par_iter()
@@ -64,7 +65,7 @@ pub fn sync(
     let num_found_decks: usize = decks.len();
     let num_total_callouts: usize = decks.par_iter().map(|d| d.callouts.len()).sum();
 
-    println!(
+    info!(
         "Found {} decks with a total of {} callouts",
         num_found_decks, num_total_callouts
     );
@@ -74,6 +75,7 @@ pub fn sync(
         .map(|path| Callout::extract_callouts(path).unwrap())
         .flatten()
         .collect::<Vec<_>>();
+    // dbg!(&callouts);
 
     // Get available decks and models
     let decks2 = client.decks().get_all()?;
@@ -120,7 +122,7 @@ pub fn sync(
         .filter(Result::is_ok)
         .map(Result::unwrap)
         .collect();
-    // dbg!(&notes);
+    dbg!(&notes);
 
     // dbg!(markdown::to_html("foo\n\nbar"));
     // dbg!(&decks[0].callouts[0]);
@@ -133,7 +135,10 @@ pub fn sync(
 
     // Add the note to the first deck
     //
+    let pb = ProgressBar::new(notes.len().try_into()?);
     let mut note_id: NoteId = NoteId(0);
+    let mut num_added = 0usize;
+    let mut num_failed = 0usize;
     for note in notes {
         match client
             .cards()
@@ -141,12 +146,20 @@ pub fn sync(
         {
             Ok(id) => {
                 note_id = id;
-                info!("Added note with ID: {}", note_id.value())
+                num_added += 1;
+                debug!("Added note with ID: {}", note_id.value())
             }
-            Err(err) => error!("Failed to create note for: {:?}", note),
+            Err(err) => {
+                num_failed += 1;
+                debug!("Failed to create note for: {:?}", note)
+            }
         };
-        // println!("Added note with ID: {}", note_id.value());
+        pb.inc(1);
     }
+    info!(
+        "Added {} notes. Failed to add {} notes.",
+        num_added, num_failed
+    );
 
     Ok(())
 }

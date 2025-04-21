@@ -95,6 +95,20 @@
     --hex-blue: #89b4fa;
     --hex-lavender: #b4befe;
 
+    --filter-pink: invert(93%) sepia(4%) saturate(961%) hue-rotate(320deg) brightness(97%) contrast(97%);
+    --filter-purple: invert(73%) sepia(40%) saturate(2206%) hue-rotate(205deg) brightness(105%) contrast(94%);
+    --filter-red: invert(63%) sepia(18%) saturate(1031%) hue-rotate(294deg) brightness(101%) contrast(91%);
+    --filter-orange: invert(75%) sepia(13%) saturate(1299%) hue-rotate(334deg) brightness(102%) contrast(96%);
+    --filter-yellow: invert(85%) sepia(31%) saturate(363%) hue-rotate(345deg) brightness(103%) contrast(95%);
+    ;
+    --filter-green: invert(93%) sepia(9%) saturate(1440%) hue-rotate(56deg) brightness(93%) contrast(90%);
+    --filter-teal: invert(84%) sepia(36%) saturate(321%) hue-rotate(115deg) brightness(96%) contrast(88%);
+    --filter-sky: invert(79%) sepia(47%) saturate(344%) hue-rotate(147deg) brightness(96%) contrast(91%);
+    --filter-cyan: invert(66%) sepia(78%) saturate(261%) hue-rotate(158deg) brightness(97%) contrast(91%);
+    --filter-blue: invert(69%) sepia(12%) saturate(1794%) hue-rotate(184deg) brightness(99%) contrast(98%);
+    --filter-lavender: invert(73%) sepia(52%) saturate(881%) hue-rotate(191deg) brightness(105%) contrast(99%);
+    --filter-quote: invert(66%) sepia(0%) saturate(0%) hue-rotate(174deg) brightness(96%) contrast(92%);
+    --filter-word: invert(66%) sepia(28%) saturate(737%) hue-rotate(139deg) brightness(90%) contrast(95%);
 
     --color-red-rgb: var(--ctp-red);
     --color-red: var(--hex-red);
@@ -113,10 +127,14 @@
     --color-pink-rgb: var(--ctp-pink);
     --color-pink: var(--hex-pink);
 
-
-
-
-
+    /* --color-red-rgb: var(--red); */
+    /* --color-orange-rgb: var(--peach); */
+    /* --color-yellow-rgb: var(--yellow); */
+    /* --color-green-rgb: var(--green); */
+    /* --color-cyan-rgb: var(--sapphire); */
+    /* --color-blue-rgb: var(--blue); */
+    /* --color-purple-rgb: var(--mauve); */
+    /* --color-pink-rgb: var(--pink); */
 
     --callout-border-width: 0.25px;
     --callout-border-opacity: 0.2;
@@ -153,6 +171,13 @@ body {
 div {
     display: block;
     unicode-bidi: isolate;
+}
+
+div.center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
 }
 
 summary::-webkit-details-marker {
@@ -218,10 +243,6 @@ hr {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-}
-
-.callout-icon::before {
-    content: "";
     display: block;
     width: 24px;
     height: 24px;
@@ -243,8 +264,11 @@ svg.svg-icon {
 }
 
 .callout-icon::before {
-    mask-image: var(--callout-icon);
-    background-color: rgb(var(--callout-color));
+    /* -webkit-mask-image: var(--callout-icon); */
+    /* mask-image: var(--callout-icon); */
+    /* background-color: rgb(var(--callout-color)); */
+    content: var(--callout-icon);
+    filter: var(--callout-filter);
 }
 
 .callout[data-callout="요약"],
@@ -254,18 +278,21 @@ svg.svg-icon {
 .callout[data-callout=tldr] {
     --callout-color: var(--callout-summary);
     --callout-icon: var(--lucide-clipboard-list);
+    --callout-filter: var(--filter-cyan);
 }
 
 .callout[data-callout="정보"],
 .callout[data-callout=info] {
     --callout-icon: var(--lucide-info);
-    --callout-color: var(--callout-info)
+    --callout-color: var(--callout-info);
+    --callout-filter: var(--filter-blue);
 }
 
 .callout[data-callout="작업"],
 .callout[data-callout=todo] {
     --callout-color: var(--callout-todo);
     --callout-icon: var(--lucide-check-circle-2);
+    --callout-filter: var(--filter-blue);
 }
 
 .callout[data-callout="팁"],
@@ -276,6 +303,7 @@ svg.svg-icon {
 .callout[data-callout=important] {
     --callout-color: var(--callout-tip);
     --callout-icon: var(--lucide-flame);
+    --callout-filter: var(--filter-cyan);
 }
 
 .callout[data-callout="성공"],
@@ -286,6 +314,7 @@ svg.svg-icon {
 .callout[data-callout=done] {
     --callout-color: var(--callout-success);
     --callout-icon: var(--lucide-check);
+    --callout-filter: var(--filter-green);
 }
 
 .callout[data-callout="질문"],
@@ -296,6 +325,7 @@ svg.svg-icon {
 .callout[data-callout=faq] {
     --callout-color: var(--callout-question);
     --callout-icon: var(--help-circle);
+    --callout-filter: var(--filter-yellow);
 }
 
 .callout[data-callout="경고"],
@@ -306,6 +336,7 @@ svg.svg-icon {
 .callout[data-callout=attention] {
     --callout-color: var(--callout-warning);
     --callout-icon: var(--lucide-alert-triangle);
+    --callout-filter: var(--filter-orange);
 }
 
 .callout[data-callout="실패"],
@@ -316,6 +347,7 @@ svg.svg-icon {
 .callout[data-callout=missing] {
     --callout-color: var(--callout-fail);
     --callout-icon: var(--lucide-x);
+    --callout-filter: var(--filter-red);
 }
 
 .callout[data-callout="오류"],
@@ -324,18 +356,21 @@ svg.svg-icon {
 .callout[data-callout=error] {
     --callout-color: var(--callout-error);
     --callout-icon: var(--lucide-zap);
+    --callout-filter: var(--filter-red);
 }
 
 .callout[data-callout="버그"],
 .callout[data-callout=bug] {
     --callout-color: var(--callout-bug);
     --callout-icon: var(--lucide-bug);
+    --callout-filter: var(--filter-red);
 }
 
 .callout[data-callout="예"],
 .callout[data-callout=example] {
     --callout-color: var(--callout-example);
     --callout-icon: var(--lucide-list);
+    --callout-filter: var(--filter-purple);
 }
 
 .callout[data-callout="인용"],
@@ -343,6 +378,7 @@ svg.svg-icon {
 .callout[data-callout=cite] {
     --callout-color: var(--callout-quote);
     --callout-icon: var(--quote-glyph);
+    --callout-filter: var(--filter-quote);
 }
 
 
@@ -360,36 +396,43 @@ svg.svg-icon {
 .callout[data-callout="참고"] {
     --callout-color: var(--callout-quote);
     --callout-icon: var(--quote-glyph);
+    --callout-filter: var(--filter-quote);
 }
 
 .callout[data-callout="word"],
 .callout[data-callout="단어"] {
     --callout-color: 74, 180, 194;
     --callout-icon: var(--lucide-whole-word);
+    --callout-filter: var(--filter-word);
 }
 
 .callout[data-callout="rule"],
 .callout[data-callout="규칙"] {
     --callout-color: 74, 180, 194;
     --callout-icon: var(--lucide-scroll-text);
+    --callout-filter: var(--filter-word);
 }
 
 .callout[data-callout="conjugation"],
 .callout[data-callout="활용"] {
     --callout-color: 162, 205, 111;
     --callout-icon: var(--lucide-square-function);
+    --callout-filter: invert(75%) sepia(43%) saturate(382%) hue-rotate(45deg) brightness(94%) contrast(91%);
 }
 
 .callout[data-callout="exception"],
 .callout[data-callout="예외"] {
     --callout-color: var(--callout-warning);
     --callout-icon: var(--lucide-alert-triangle);
+    --callout-filter: var(--filter-orange);
 }
 
 .callout[data-callout="example-sentence"],
 .callout[data-callout="예문-문장"] {
     --callout-color: var(--callout-example);
     --callout-icon: var(--lucide-list);
+
+    --callout-filter: var(--filter-purple);
 }
 
 .callout[data-callout="word"]:not(.callout[data-callout="word"] .callout)>.callout-title .callout-title-inner,

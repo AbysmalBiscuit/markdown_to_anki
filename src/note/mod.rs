@@ -1,6 +1,5 @@
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
-use crate::callout::{Callout, callout_type::CalloutType, content::CalloutContent};
+pub(crate) mod basic;
+pub(crate) mod traits;
 
 #[derive(Debug)]
 pub struct Word {
@@ -34,18 +33,4 @@ struct Rule {
     irregular_rules: String,
     phonetics: String,
     references: String,
-}
-
-#[derive(Debug)]
-pub struct Basic {
-    pub front: String,
-    pub back: String,
-}
-impl Basic {
-    pub fn from_callout(callout: &Callout, header_lang: Option<&str>) -> Self {
-        Basic {
-            front: callout.header.clone(),
-            back: callout.content_to_html(header_lang),
-        }
-    }
 }

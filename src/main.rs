@@ -86,8 +86,8 @@ fn main() -> Result<(), GenericError> {
                 .get_one::<PathBuf>("input")
                 .unwrap()
                 .to_path_buf();
-            let note_type: String = sub_matches
-                .get_one::<String>("note_type")
+            let model_name: String = sub_matches
+                .get_one::<String>("model_name")
                 .unwrap()
                 .to_string();
             let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();

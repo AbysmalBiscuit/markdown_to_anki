@@ -6,28 +6,44 @@ mod deck;
 mod error;
 mod find_markdown_files;
 mod model;
+mod progress;
 use crate::find_markdown_files::find_markdown_files;
 use callout::Callout;
 use cli::cli;
 use error::GenericError;
+use progress::{LOOKING_GLASS, print_step};
 use rayon::prelude::*;
 use std::{fs::File, io::Write, path::PathBuf};
+use tracing::info;
+use tracing::instrument;
+use tracing::warn;
+use tracing_indicatif::IndicatifLayer;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 fn create_markdown_anki_cards_file(
     input_dir: &PathBuf,
     output_file_path: PathBuf,
 ) -> Result<(), GenericError> {
+    let max_step = 10;
+    print_step(
+        1,
+        max_step,
+        Some("Finding markdown files"),
+        Some(LOOKING_GLASS),
+    );
     let markdown_files = find_markdown_files(input_dir)?;
 
     if markdown_files.is_empty() {
-        println!(
+        warn!(
             "Failed to find any markdown files in: '{}'",
             input_dir.to_str().unwrap()
         );
         return Ok(());
     }
 
-    println!("Found {} markdown files.", &markdown_files.len());
+    info!("Found {} markdown files.", &markdown_files.len());
+    print_step(2, max_step, Some("Converting callouts"), None);
 
     let callouts: Vec<Callout> = markdown_files
         .par_iter()
@@ -37,7 +53,7 @@ fn create_markdown_anki_cards_file(
 
     let num_callouts = &callouts.len();
 
-    println!("Found {} callouts", num_callouts);
+    info!("Found {} callouts", num_callouts);
 
     let mut output_file = File::create(&output_file_path)?;
 
@@ -49,7 +65,7 @@ fn create_markdown_anki_cards_file(
 
     output_file.write_all(content.as_bytes())?;
 
-    println!(
+    info!(
         "Wrote {} callouts to '{}'",
         &num_callouts,
         output_file_path.to_str().unwrap()

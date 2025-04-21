@@ -6,20 +6,16 @@ pub(crate) mod try_from;
 use crate::error::GenericError;
 use callout_type::CalloutType;
 use content::CalloutContent;
-use error::CalloutError;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rayon::prelude::*;
-use regex::Regex;
 use std::fmt::Display;
 use std::fs::read_to_string;
 use std::path::Path;
-use std::sync::LazyLock;
-
-use try_from::*;
 
 #[derive(Debug)]
 pub struct Callout {
     pub id: String,
+    pub markdown_id: String,
     pub callout_type: CalloutType,
     pub header: String,
     pub content: Vec<CalloutContent>,
@@ -29,6 +25,7 @@ pub struct Callout {
 impl Callout {
     pub fn new(
         id: String,
+        markdown_id: String,
         callout_type: CalloutType,
         header: String,
         content: Vec<CalloutContent>,
@@ -36,6 +33,7 @@ impl Callout {
     ) -> Callout {
         Callout {
             id,
+            markdown_id,
             callout_type,
             header,
             content,
@@ -95,7 +93,6 @@ impl Callout {
                             .unwrap_or("".into()),
                     )
                 }
-                _ => (),
             }
         }
         if !unconverted_content.is_empty() {
@@ -143,6 +140,7 @@ impl Default for Callout {
     fn default() -> Self {
         Callout {
             id: "".into(),
+            markdown_id: "".into(),
             callout_type: CalloutType::Word,
             header: "Default".into(),
             content: Vec::new(),

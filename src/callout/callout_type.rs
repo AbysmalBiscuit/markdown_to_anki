@@ -1,5 +1,5 @@
-use std::fmt::Display;
-
+#![allow(unreachable_patterns)]
+// TODO: fix patterns that are unreachable due to duplicate names in Korean
 use strum::{Display, EnumProperty, EnumString};
 
 #[derive(Debug, Display, EnumString, EnumProperty, PartialEq, Eq)]

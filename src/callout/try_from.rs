@@ -2,14 +2,7 @@ use super::callout_type::CalloutType;
 use super::content::CalloutContent;
 use super::error::CalloutError;
 use crate::Callout;
-use crate::error::GenericError;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use rayon::prelude::*;
 use regex::Regex;
-use std::collections::VecDeque;
-use std::fmt::Display;
-use std::fs::read_to_string;
-use std::path::Path;
 use std::sync::LazyLock;
 
 static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
@@ -27,13 +20,15 @@ impl TryFrom<Vec<&str>> for Callout {
             None => panic!("{:?}", CalloutError::EmptyString),
         };
 
-        let caps = RE_HEADER.captures(header_line).expect(
-            "first line should be formatted as a callout '> [!TYPE] TEXT TRANSLITERATION EMOJI'",
-        );
-        let callout_type: CalloutType = caps[1].try_into().map_err(|e| match e {
-            strum::ParseError::VariantNotFound => CalloutError::UnknownType,
-            _ => CalloutError::UnknownType,
-        })?;
+        let caps = RE_HEADER
+            .captures(header_line)
+            .ok_or(CalloutError::FailedToParseHeader)?;
+
+        // .expect(
+        // );
+
+        let callout_type: CalloutType =
+            caps[1].try_into().map_err(|_| CalloutError::UnknownType)?;
         let header: String = caps
             .get(2)
             .map_or(String::new(), |m| m.as_str().to_string());
@@ -54,7 +49,7 @@ impl TryFrom<Vec<&str>> for Callout {
             content.push(CalloutContent::Text(transliteration));
         }
 
-        let mut id: &str = "";
+        let mut markdown_id: &str = "";
         let mut sub_callouts: Vec<Callout> = Vec::with_capacity(content_length);
         let mut prev: &str = "";
         let mut line: &str;
@@ -64,7 +59,7 @@ impl TryFrom<Vec<&str>> for Callout {
             if !prev.is_empty() {
                 if prev.starts_with("> ^") {
                     dbg!(prev);
-                    id = prev.strip_prefix("> ^").unwrap_or("");
+                    markdown_id = prev.strip_prefix("> ^").unwrap_or("");
                     break 'split_loop;
                 }
                 content.push(CalloutContent::Text(
@@ -112,7 +107,7 @@ impl TryFrom<Vec<&str>> for Callout {
             } else {
                 line = line.strip_prefix(">").unwrap_or(line).trim();
                 if line.starts_with('^') {
-                    id = line.strip_prefix("^").unwrap_or("").trim();
+                    markdown_id = line.strip_prefix("^").unwrap_or("").trim();
                     break 'split_loop;
                 }
                 content.push(CalloutContent::Text(line.trim().to_string()));
@@ -141,7 +136,8 @@ impl TryFrom<Vec<&str>> for Callout {
         }
 
         Ok(Callout::new(
-            id.into(),
+            "".into(),
+            markdown_id.into(),
             callout_type,
             header,
             content,

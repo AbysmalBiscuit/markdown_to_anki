@@ -1,5 +1,3 @@
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
 use crate::callout::Callout;
 
 use super::traits::AddNote;
@@ -9,7 +7,10 @@ pub struct Basic {
     pub front: String,
     pub back: String,
 }
+
 impl Basic {
+    const fields_map: [[&str; 2]; 2] = [["front", "Front"], ["back", "Back"]];
+
     pub fn from_callout(callout: &Callout, header_lang: Option<&str>) -> Self {
         Basic {
             front: callout.header.clone(),

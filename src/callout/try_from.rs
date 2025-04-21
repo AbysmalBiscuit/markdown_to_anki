@@ -58,7 +58,6 @@ impl TryFrom<Vec<&str>> for Callout {
         'split_loop: loop {
             if !prev.is_empty() {
                 if prev.starts_with("> ^") {
-                    dbg!(prev);
                     markdown_id = prev.strip_prefix("> ^").unwrap_or("");
                     break 'split_loop;
                 }

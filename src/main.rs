@@ -4,8 +4,9 @@ mod callout;
 mod cli;
 mod deck;
 mod error;
-mod markdown_to_html;
+mod find_markdown_files;
 mod note;
+use crate::find_markdown_files::find_markdown_files;
 use callout::Callout;
 use cli::cli;
 use error::GenericError;
@@ -21,13 +22,7 @@ fn create_markdown_anki_cards_file(
     input_dir: &PathBuf,
     output_file_path: PathBuf,
 ) -> Result<(), GenericError> {
-    let markdown_files: Vec<PathBuf> = WalkDir::new(input_dir)
-        .into_iter()
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| {
-            path.extension().is_some_and(|ext| ext == "md") && path.ne(output_file_path.as_os_str())
-        })
-        .collect::<Vec<_>>();
+    let markdown_files = find_markdown_files(input_dir)?;
 
     if markdown_files.is_empty() {
         println!(
@@ -94,7 +89,7 @@ fn main() -> Result<(), GenericError> {
             let header_lang: Option<&str> = sub_matches
                 .get_one::<String>("header_lang")
                 .map(|value| value.as_str());
-            anki_connect::sync(&input_dir, parent_deck, header_lang)?;
+            anki::sync::sync(&input_dir, parent_deck, model_name, header_lang)?;
         }
         _ => unreachable!(),
     }

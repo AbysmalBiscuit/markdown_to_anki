@@ -1,22 +1,17 @@
-#![allow(unused)]
+// #![allow(unused)]
 mod anki;
 mod callout;
 mod cli;
 mod deck;
 mod error;
 mod find_markdown_files;
-mod note;
+mod model;
 use crate::find_markdown_files::find_markdown_files;
 use callout::Callout;
 use cli::cli;
 use error::GenericError;
-use jwalk::WalkDir;
 use rayon::prelude::*;
-use std::{
-    fs::File,
-    io::{self, Write},
-    path::PathBuf,
-};
+use std::{fs::File, io::Write, path::PathBuf};
 
 fn create_markdown_anki_cards_file(
     input_dir: &PathBuf,

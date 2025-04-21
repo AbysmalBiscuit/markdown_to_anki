@@ -1,17 +1,34 @@
 use crate::callout::Callout;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
-use crate::note::basic::Basic;
-use ankiconnect_rs::{AnkiClient, DuplicateScope, NoteBuilder};
-use jwalk::WalkDir;
+use crate::model::basic::Basic;
+use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, NoteBuilder};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::collections::HashMap;
-use std::error::Error;
 use std::fs::File;
-use std::io::{Error as IOError, Write};
+use std::io::Write;
 use std::path::PathBuf;
 
 use crate::error::GenericError;
+
+#[allow(unused)]
+fn print_models_info(models: &[Model]) {
+    for (i, model) in models.iter().enumerate() {
+        println!("\n{}. Model: {} (ID: {})", i, model.name(), model.id().0);
+
+        // Print field information
+        println!("   Fields ({}):", model.fields().len());
+        for field in model.fields() {
+            println!("   - {} (position: {})", field.name(), field.ord());
+
+            // Add some helpful info about likely roles
+            if field.is_front() {
+                println!("     Likely role: Question/Front field");
+            } else if field.is_back() {
+                println!("     Likely role: Answer/Back field");
+            }
+        }
+    }
+}
 
 // fn request(action, )
 pub fn sync(
@@ -60,36 +77,27 @@ pub fn sync(
     let models = client.models().get_all()?;
     let selected_model = models
         .par_iter()
-        .find_any(|model| model.name().eq(&model_name));
-    dbg!(selected_model);
-    for (i, model) in models.iter().enumerate() {
-        println!("\n{}. Model: {} (ID: {})", i, model.name(), model.id().0);
+        .find_any(|model| model.name().eq(&model_name))
+        .ok_or(AnkiConnectError::ModelNotFound(model_name.clone()))?;
 
-        // Print field information
-        println!("   Fields ({}):", model.fields().len());
-        for field in model.fields() {
-            println!("   - {} (position: {})", field.name(), field.ord());
-
-            // Add some helpful info about likely roles
-            if field.is_front() {
-                println!("     Likely role: Question/Front field");
-            } else if field.is_back() {
-                println!("     Likely role: Answer/Back field");
-            }
-        }
-    }
-
-    // Build a note with the selected model
-    let selected_model = &models[0];
-    dbg!(selected_model);
-    // let front_field = selected_model.field_ref("Front").unwrap();
-    // let back_field = selected_model.field_ref("Back").unwrap();
-    //
-    // let note = NoteBuilder::new(selected_model.clone())
-    //     .with_field(front_field, "¿Dónde está la biblioteca?")
-    //     .with_field(back_field, "Where is the library?")
-    //     .with_tag("spanish-vocab")
-    //     .build()?;
+    let front_field = selected_model
+        .field_ref("Front")
+        .ok_or(AnkiError::InvalidField {
+            field_name: "Front".to_string(),
+            model_name: model_name.clone(),
+        })?;
+    let back_field = selected_model
+        .field_ref("Back")
+        .ok_or(AnkiError::InvalidField {
+            field_name: "Back".to_string(),
+            model_name: model_name.clone(),
+        })?;
+    let note = NoteBuilder::new(selected_model.clone())
+        .with_field(front_field, "¿Dónde está la biblioteca?")
+        .with_field(back_field, "Where is the library?")
+        .with_tag("spanish-vocab")
+        .build()?;
+    dbg!(&note);
 
     // dbg!(markdown::to_html("foo\n\nbar"));
     // dbg!(&decks[0].callouts[0]);

@@ -1,9 +1,10 @@
+use super::client_traits::Find;
 use crate::callout::Callout;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::basic::Basic;
-use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, NoteBuilder};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -30,7 +31,6 @@ fn print_models_info(models: &[Model]) {
     }
 }
 
-// fn request(action, )
 pub fn sync(
     path: &PathBuf,
     parent_deck: String,
@@ -73,13 +73,21 @@ pub fn sync(
         .collect::<Vec<_>>();
 
     // Get available decks and models
-    let decks = client.decks().get_all()?;
+    let decks2 = client.decks().get_all()?;
+    // let selected_deck = find_deck(decks, deck_name)
     let models = client.models().get_all()?;
-    let selected_model = models
-        .par_iter()
-        .find_any(|model| model.name().eq(&model_name))
-        .ok_or(AnkiConnectError::ModelNotFound(model_name.clone()))?;
+    // let selected_model = models
+    //     .par_iter()
+    //     .find_any(|model| model.name().eq(&model_name))
+    //     .ok_or(AnkiConnectError::ModelNotFound(model_name.clone()))?;
 
+    let basics: Vec<Basic> = callouts
+        .par_iter()
+        .map(|callout| Basic::from_callout(callout, header_lang))
+        .collect();
+
+    // let selected_model = client.models().get_by_name(&model_name)?.ok_or();
+    let selected_model = client.find_model(&model_name)?;
     let front_field = selected_model
         .field_ref("Front")
         .ok_or(AnkiError::InvalidField {
@@ -92,12 +100,19 @@ pub fn sync(
             field_name: "Back".to_string(),
             model_name: model_name.clone(),
         })?;
-    let note = NoteBuilder::new(selected_model.clone())
-        .with_field(front_field, "¿Dónde está la biblioteca?")
-        .with_field(back_field, "Where is the library?")
-        .with_tag("spanish-vocab")
-        .build()?;
-    dbg!(&note);
+    let notes: Vec<_> = basics
+        .into_par_iter()
+        .map(|basic| {
+            NoteBuilder::new(selected_model.clone())
+                .with_field_raw(front_field, &basic.front)
+                .with_field_raw(back_field, &basic.back)
+                .with_tag("md2anki")
+                .build()
+        })
+        .filter(Result::is_ok)
+        .map(Result::unwrap)
+        .collect();
+    dbg!(&notes);
 
     // dbg!(markdown::to_html("foo\n\nbar"));
     // dbg!(&decks[0].callouts[0]);
@@ -105,17 +120,18 @@ pub fn sync(
     // let mut f = File::create(path.join("out.html"))?;
     // f.write_all(&decks[0].callouts[0].to_html(None).as_bytes())?;
 
-    let basics: Vec<Basic> = callouts
-        .par_iter()
-        .map(|callout| Basic::from_callout(callout, header_lang))
-        .collect();
-    let mut f = File::create(path.join("out.html"))?;
-    f.write_all(&basics[0].back.as_bytes())?;
-    dbg!(&basics);
+    // let mut f = File::create(path.join("out.html"))?;
+    // f.write_all(&basics[0].back.as_bytes())?;
+    // dbg!(&basics);
+
+    let selected_deck = client.find_or_create_deck(&parent_deck);
+    dbg!(&selected_deck);
 
     // Add the note to the first deck
-    // let note_id = client.cards().add_note(&decks[0], note, false, None)?;
-    // println!("Added note with ID: {}", note_id.value());
+    for note in notes {
+        let note_id = client.cards().add_note(&selected_deck, note, false, None)?;
+        println!("Added note with ID: {}", note_id.value());
+    }
 
     Ok(())
 }

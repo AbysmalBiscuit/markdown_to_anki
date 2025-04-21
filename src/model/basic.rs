@@ -9,7 +9,7 @@ pub struct Basic {
 }
 
 impl Basic {
-    const fields_map: [[&str; 2]; 2] = [["front", "Front"], ["back", "Back"]];
+    const FIELDS_MAP: [[&str; 2]; 2] = [["front", "Front"], ["back", "Back"]];
 
     pub fn from_callout(callout: &Callout, header_lang: Option<&str>) -> Self {
         Basic {

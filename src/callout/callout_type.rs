@@ -98,6 +98,6 @@ impl CalloutType {
         name.split("-")
             .map(|part| part[0..1].to_uppercase() + &part[1..])
             .collect::<Vec<String>>()
-            .join("")
+            .join(" ")
     }
 }

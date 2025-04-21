@@ -119,7 +119,7 @@ impl Callout {
         };
 
         format!(
-            r#"<div data-callout="{0}" class="callout"><div class="callout-title"><div class="callout-icon"></div>{1}</div>{2}</div>"#,
+            r#"<details data-callout="{0}" class="callout"><summary class="callout-title"><div class="callout-icon"></div>{1}</summary>{2}</details>"#,
             self.callout_type,
             header,
             self.content_to_html(header_lang)

@@ -20,7 +20,11 @@ fn find_markdown_files(input_dir: &PathBuf) -> Result<Vec<PathBuf>, Error> {
 }
 
 // fn request(action, )
-pub fn sync(path: &PathBuf, parent_deck: String) -> Result<(), GenericError> {
+pub fn sync(
+    path: &PathBuf,
+    parent_deck: String,
+    header_lang: Option<&str>,
+) -> Result<(), GenericError> {
     let client = AnkiClient::default();
 
     let markdown_files = find_markdown_files(path)?;
@@ -60,12 +64,19 @@ pub fn sync(path: &PathBuf, parent_deck: String) -> Result<(), GenericError> {
         .request(GetDeckStatsRequest { decks: decks_names })
         .unwrap();
 
-    dbg!(&decks[0].callouts[0]);
+    // dbg!(markdown::to_html("foo\n\nbar"));
+    // dbg!(&decks[0].callouts[0]);
+    // dbg!(&decks[0].callouts[0].to_html_only_content(None));
     // let mut f = File::create(path.join("out.html"))?;
-    // f.write_all(&decks[0].callouts[0].to_html().as_bytes())?;
+    // f.write_all(&decks[0].callouts[0].to_html(None).as_bytes())?;
 
-    let basics: Vec<Basic> = callouts.par_iter().map(Basic::from).collect();
-    // dbg!(&basics);
+    let basics: Vec<Basic> = callouts
+        .par_iter()
+        .map(|callout| Basic::from_callout(callout, header_lang))
+        .collect();
+    let mut f = File::create(path.join("out.html"))?;
+    f.write_all(&basics[0].back.as_bytes())?;
+    dbg!(&basics);
     Ok(())
 }
 

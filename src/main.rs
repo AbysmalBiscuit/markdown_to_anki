@@ -91,7 +91,10 @@ fn main() -> Result<(), GenericError> {
                 .unwrap()
                 .to_string();
             let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();
-            anki_connect::sync(&input_dir, parent_deck)?;
+            let header_lang: Option<&str> = sub_matches
+                .get_one::<String>("header_lang")
+                .map(|value| value.as_str());
+            anki_connect::sync(&input_dir, parent_deck, header_lang)?;
         }
         _ => unreachable!(),
     }

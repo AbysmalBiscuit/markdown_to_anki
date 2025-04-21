@@ -60,5 +60,12 @@ pub fn cli() -> Command {
                         .short('n')
                         .default_value("Korean md2anki Basic (and reversed card)")
                 )
+                .arg(
+                    Arg::new("header_lang")
+                        .help("2 letter language code (ISO 639-1) to use for callout names. Falls back to English if not specified or not supported.")
+                        .long("lang")
+                        .short('l')
+                        .default_value("")
+                )
         )
 }

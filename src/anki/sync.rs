@@ -10,6 +10,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::error::GenericError;
+use crate::progress::{LOOKING_GLASS, print_step};
 
 #[allow(unused)]
 fn print_models_info(models: &[Model]) {
@@ -37,6 +38,7 @@ pub fn sync(
     model_name: String,
     header_lang: Option<&str>,
 ) -> Result<(), GenericError> {
+    print_step(1, 10, Some("Connecting to Anki"), Some(LOOKING_GLASS));
     // Create a client with default connection (localhost:8765)
     let client = AnkiClient::new();
 
@@ -100,6 +102,11 @@ pub fn sync(
             field_name: "Back".to_string(),
             model_name: model_name.clone(),
         })?;
+
+    // let mut f = File::create(path.join("out.html"))?;
+    // f.write_all(&basics[0].back.as_bytes())?;
+    // dbg!(&basics);
+
     let notes: Vec<_> = basics
         .into_par_iter()
         .map(|basic| {
@@ -120,12 +127,8 @@ pub fn sync(
     // let mut f = File::create(path.join("out.html"))?;
     // f.write_all(&decks[0].callouts[0].to_html(None).as_bytes())?;
 
-    // let mut f = File::create(path.join("out.html"))?;
-    // f.write_all(&basics[0].back.as_bytes())?;
-    // dbg!(&basics);
-
     let selected_deck = client.find_or_create_deck(&parent_deck);
-    dbg!(&selected_deck);
+    // dbg!(&selected_deck);
 
     // Add the note to the first deck
     for note in notes {

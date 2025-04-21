@@ -122,7 +122,7 @@ pub fn sync(
         .filter(Result::is_ok)
         .map(Result::unwrap)
         .collect();
-    dbg!(&notes);
+    // dbg!(&notes);
 
     // dbg!(markdown::to_html("foo\n\nbar"));
     // dbg!(&decks[0].callouts[0]);

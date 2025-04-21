@@ -1,2 +1,3 @@
-// pub(crate) mod error;
+mod client_traits;
+mod error;
 pub(crate) mod sync;

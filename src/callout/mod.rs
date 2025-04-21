@@ -73,49 +73,59 @@ impl Callout {
         Ok(callouts)
     }
 
-    pub fn to_html(&self, header_lang: Option<&str>) -> String {
-        let mut content = Vec::with_capacity((self.content.len() + 2) * 2);
-        content.push(
-            self.content
-                .clone()
-                .par_iter()
-                .filter_map(|item| match item {
-                    CalloutContent::Text(text) => Some(text).cloned(),
-                    CalloutContent::SubCalloutIndex(index) => self
-                        .sub_callouts
-                        .get(*index)
-                        .and_then(|sub_callout| match sub_callout.callout_type {
-                            CalloutType::Links => None,
-                            _ => Some(sub_callout.to_html(None)),
-                        }),
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-                .join("\n"),
-        );
+    pub fn content_to_html(&self, header_lang: Option<&str>) -> String {
+        let mut content: Vec<String> = Vec::with_capacity(self.content.len());
+        let mut unconverted_content: Vec<&str> = Vec::with_capacity(self.content.len());
 
+        for item in &self.content {
+            match item {
+                CalloutContent::Text(text) => unconverted_content.push(text.as_str()),
+                CalloutContent::SubCalloutIndex(index) => {
+                    if !unconverted_content.is_empty() {
+                        content.push(markdown::to_html(&unconverted_content.join("\n\n")));
+                        unconverted_content.clear();
+                    }
+                    content.push(
+                        self.sub_callouts
+                            .get(*index)
+                            .and_then(|sub_callout| match sub_callout.callout_type {
+                                CalloutType::Links => None,
+                                _ => Some(sub_callout.to_html(header_lang)),
+                            })
+                            .unwrap_or("".into()),
+                    )
+                }
+                _ => (),
+            }
+        }
+        if !unconverted_content.is_empty() {
+            content.push(markdown::to_html(&unconverted_content.join("\n\n")));
+            unconverted_content.clear();
+        }
+
+        if !content.is_empty() {
+            content
+                .into_par_iter()
+                .map(|content| format!(r#"<p dir="auto">{}</p>"#, content))
+                .collect::<Vec<_>>()
+                .join("\n")
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn to_html(&self, header_lang: Option<&str>) -> String {
         let header = if self.header.is_empty() {
             self.callout_type.get_name(header_lang)
         } else {
             self.header.clone()
         };
 
-        let content_text = if !content.is_empty() {
-            format!(
-                r#"<div class="callout-content">{0}</div>"#,
-                content
-                    .into_par_iter()
-                    .map(|content| format!(r#"<p dir="auto">{}</p>"#, content))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            )
-        } else {
-            "".to_string()
-        };
-
         format!(
             r#"<div data-callout="{0}" class="callout"><div class="callout-title"><div class="callout-icon"></div>{1}</div>{2}</div>"#,
-            self.callout_type, header, content_text
+            self.callout_type,
+            header,
+            self.content_to_html(header_lang)
         )
     }
 
@@ -124,23 +134,7 @@ impl Callout {
             "<pre>\nSTART\n{}\n{}\nBack: {}\nEND\n</pre>",
             card_type.unwrap_or("Basic"),
             self.header,
-            self.content
-                .par_iter()
-                .filter_map(|item| match item {
-                    CalloutContent::Text(text) => Some(text).cloned(),
-                    CalloutContent::SubCalloutIndex(index) => {
-                        self.sub_callouts.get(*index).and_then(|sub_callout| {
-                            match sub_callout.callout_type {
-                                CalloutType::Links => None,
-                                _ => Some(sub_callout.to_html(None)),
-                            }
-                        })
-                    }
-                    _ => None,
-                })
-                .map(|item| item.to_owned())
-                .collect::<Vec<String>>()
-                .join("\n")
+            self.content_to_html(None)
         )
     }
 }

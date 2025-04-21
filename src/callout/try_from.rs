@@ -60,7 +60,6 @@ impl TryFrom<Vec<&str>> for Callout {
         let mut line: &str;
         let mut next: &str = "";
 
-        // TODO: rewrite this to be a loop around indeces instead of iter
         'split_loop: loop {
             if !prev.is_empty() {
                 if prev.starts_with("> ^") {
@@ -105,7 +104,8 @@ impl TryFrom<Vec<&str>> for Callout {
                         prev = next_line;
                         break 'sub_callout;
                     }
-                    sub_callout_vector.push(next_line);
+                    sub_callout_vector
+                        .push(next_line.strip_prefix(">").unwrap_or(next_line).trim());
                 }
                 sub_callouts.push(sub_callout_vector.try_into()?);
                 content.push(CalloutContent::SubCalloutIndex(sub_callouts.len() - 1));

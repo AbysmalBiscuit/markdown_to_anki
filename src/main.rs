@@ -1,5 +1,5 @@
 #![allow(unused)]
-mod anki_connect;
+mod anki;
 mod callout;
 mod cli;
 mod deck;

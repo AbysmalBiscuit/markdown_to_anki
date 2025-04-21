@@ -18,6 +18,7 @@ use tracing::info;
 use tracing::instrument;
 use tracing::warn;
 use tracing_indicatif::IndicatifLayer;
+use tracing_subscriber::FmtSubscriber;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -75,6 +76,13 @@ fn create_markdown_anki_cards_file(
 }
 
 fn main() -> Result<(), GenericError> {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(tracing::Level::TRACE) // Or your desired level
+        .finish();
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Failed to set global default subscriber");
+
+    tracing::info!("Hello from tracing!");
     let matches = cli().get_matches();
     match matches.subcommand() {
         Some(("markdown", sub_matches)) => {

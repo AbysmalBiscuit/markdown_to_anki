@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anki_bridge = { version = "0.8.0", features = ["ureq_blocking"] }
+# anki_bridge = { version = "0.8.0", features = ["ureq_blocking"] }
+ankiconnect-rs = "1.0.0"
 clap = "4.5.36"
 jwalk = "0.8.1"
 markdown = { version = "1.0.0-alpha.23", features = ["json", "log", "serde"] }

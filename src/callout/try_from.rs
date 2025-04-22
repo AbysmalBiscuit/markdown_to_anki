@@ -101,8 +101,17 @@ impl TryFrom<Vec<&str>> for Callout {
                     sub_callout_vector
                         .push(next_line.strip_prefix(">").unwrap_or(next_line).trim());
                 }
-                sub_callouts.push(sub_callout_vector.try_into()?);
-                content.push(CalloutContent::SubCalloutIndex(sub_callouts.len() - 1));
+                let sub_callout: Callout = sub_callout_vector.try_into()?;
+                if !(sub_callout.content.is_empty()
+                    || (sub_callout.content.len() == 1
+                        && match &sub_callout.content[0] {
+                            CalloutContent::Text(text) => text.is_empty(),
+                            _ => false,
+                        }))
+                {
+                    sub_callouts.push(sub_callout);
+                    content.push(CalloutContent::SubCalloutIndex(sub_callouts.len() - 1));
+                }
             } else {
                 line = line.strip_prefix(">").unwrap_or(line).trim();
                 if line.starts_with('^') {

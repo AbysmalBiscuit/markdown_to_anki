@@ -41,11 +41,12 @@ impl Deck {
             .strip_suffix(".md")
             .ok_or_else(|| DeckError::WrongMarkdownFileExtension(self.source_file.clone()))?
             .split('/')
+            .filter(|part| !part.is_empty())
             .collect::<Vec<_>>()
             .join("::");
 
         if !to_add_prefix.is_empty() {
-            Ok(format!("{}{}", to_add_prefix, clean_name))
+            Ok(format!("{}::{}", to_add_prefix, clean_name))
         } else {
             Ok(clean_name)
         }

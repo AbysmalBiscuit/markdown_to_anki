@@ -106,6 +106,9 @@ pub fn sync(
     let mut failed_notes = Vec::new();
     let mut num_added_total = 0usize;
 
+    // Delete the deck and re-create it for testing purposes
+    client.decks().delete(&parent_deck, true);
+
     let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
     let global_pbar = ProgressBar::new(total_callouts.try_into()?);
     let decks_pbar = ProgressBar::new(decks.len().try_into()?);
@@ -130,13 +133,8 @@ pub fn sync(
             .collect();
         // dbg!(&notes);
         let deck_name = deck.get_qualified_name(Some(path), Some(&parent_deck))?;
-        // dbg!(&deck_name);
         let selected_deck = client.find_or_create_deck(&deck_name);
         // dbg!(&selected_deck);
-
-        // Delete the deck and re-create it for testing purposes
-        client.decks().delete(&parent_deck, true);
-        let selected_deck = client.find_or_create_deck(&deck_name);
 
         // Add the notes to the deck
         let pb = ProgressBar::new(notes.len().try_into()?);

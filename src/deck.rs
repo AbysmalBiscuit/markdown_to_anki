@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    error::Error,
+    path::{Path, PathBuf},
+};
 
 use strum::Display;
 
@@ -7,7 +10,10 @@ use crate::callout::Callout;
 #[derive(Display, Debug)]
 pub enum DeckError {
     MissingFileName,
+    WrongMarkdownFileExtension(PathBuf),
 }
+
+impl Error for DeckError {}
 
 #[derive(Debug)]
 pub struct Deck {
@@ -17,25 +23,32 @@ pub struct Deck {
 }
 
 impl Deck {
-    pub fn get_qualified_name(&self, path_prefix: &Path) -> String {
-        let prefix = path_prefix
-            .as_os_str()
-            .to_str()
-            .expect("path should be the source directory");
+    pub fn get_qualified_name(
+        &self,
+        to_remove_prefix: Option<&Path>,
+        to_add_prefix: Option<&str>,
+    ) -> Result<String, DeckError> {
+        let to_remove_prefix = match to_remove_prefix {
+            Some(path) => path.to_str().unwrap_or(""),
+            None => "",
+        };
+        let to_add_prefix = to_add_prefix.unwrap_or("");
+        let source_file = self.source_file.to_str().unwrap();
 
-        let clean_name = self
-            .source_file
-            .to_str()
-            .expect("the source_file should exist")
-            .strip_prefix(&format!("{}/", prefix))
-            .expect("this should be a &str");
-
-        clean_name
+        let clean_name = source_file
+            .strip_prefix(to_remove_prefix)
+            .unwrap_or(source_file)
             .strip_suffix(".md")
-            .expect("file should have a '.md' extension")
+            .ok_or_else(|| DeckError::WrongMarkdownFileExtension(self.source_file.clone()))?
             .split('/')
             .collect::<Vec<_>>()
-            .join("::")
+            .join("::");
+
+        if !to_add_prefix.is_empty() {
+            Ok(format!("{}{}", to_add_prefix, clean_name))
+        } else {
+            Ok(clean_name)
+        }
     }
 }
 

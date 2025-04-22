@@ -6,6 +6,7 @@ use crate::model::basic::Basic;
 use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder, NoteId};
 use indicatif::ProgressBar;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use std::fmt::format;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -53,8 +54,9 @@ pub fn sync(
         );
         return Ok(());
     }
-
     info!("Found {} markdown files", &markdown_files.len());
+
+    print_step(2, 10, Some("Extracting decks"), Some(LOOKING_GLASS));
 
     let decks = markdown_files
         .par_iter()
@@ -70,26 +72,17 @@ pub fn sync(
         num_found_decks, num_total_callouts
     );
 
-    let callouts: Vec<Callout> = markdown_files
-        .par_iter()
-        .map(|path| Callout::extract_callouts(path).unwrap())
-        .flatten()
-        .collect::<Vec<_>>();
+    // let callouts: Vec<Callout> = markdown_files
+    //     .par_iter()
+    //     .map(|path| Callout::extract_callouts(path).unwrap())
+    //     .flatten()
+    //     .collect::<Vec<_>>();
     // dbg!(&callouts);
 
-    // Get available decks and models
-    let decks2 = client.decks().get_all()?;
-    // let selected_deck = find_deck(decks, deck_name)
-    let models = client.models().get_all()?;
-    // let selected_model = models
+    // let basics: Vec<Basic> = callouts
     //     .par_iter()
-    //     .find_any(|model| model.name().eq(&model_name))
-    //     .ok_or(AnkiConnectError::ModelNotFound(model_name.clone()))?;
-
-    let basics: Vec<Basic> = callouts
-        .par_iter()
-        .map(|callout| Basic::from_callout(callout, header_lang))
-        .collect();
+    //     .map(|callout| Basic::from_callout(callout, header_lang))
+    //     .collect();
 
     // let selected_model = client.models().get_by_name(&model_name)?.ok_or();
     let selected_model = client.find_model(&model_name)?;
@@ -110,56 +103,90 @@ pub fn sync(
     // f.write_all(&basics[0].back.as_bytes())?;
     // dbg!(&basics);
 
-    let notes: Vec<_> = basics
-        .into_par_iter()
-        .map(|basic| {
-            NoteBuilder::new(selected_model.clone())
-                .with_field_raw(front_field, &basic.front)
-                .with_field_raw(back_field, &basic.back)
-                .with_tag("md2anki")
-                .build()
-        })
-        .filter(Result::is_ok)
-        .map(Result::unwrap)
-        .collect();
-    // dbg!(&notes);
+    let mut failed_notes = Vec::new();
+    let mut num_added_total = 0usize;
 
+    let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
+    let global_pbar = ProgressBar::new(total_callouts.try_into()?);
+    let decks_pbar = ProgressBar::new(decks.len().try_into()?);
+    for deck in decks {
+        let basics: Vec<Basic> = deck
+            .callouts
+            .par_iter()
+            .map(|callout| Basic::from_callout(callout, header_lang))
+            .collect();
+
+        let notes: Vec<_> = basics
+            .into_par_iter()
+            .map(|basic| {
+                NoteBuilder::new(selected_model.clone())
+                    .with_field_raw(front_field, &basic.front)
+                    .with_field_raw(back_field, &basic.back)
+                    .with_tag("md2anki")
+                    .build()
+            })
+            .filter(Result::is_ok)
+            .map(Result::unwrap)
+            .collect();
+        // dbg!(&notes);
+        let deck_name = deck.get_qualified_name(Some(path), Some(&parent_deck))?;
+        // dbg!(&deck_name);
+        let selected_deck = client.find_or_create_deck(&deck_name);
+        // dbg!(&selected_deck);
+
+        // Delete the deck and re-create it for testing purposes
+        client.decks().delete(&parent_deck, true);
+        let selected_deck = client.find_or_create_deck(&deck_name);
+
+        // Add the notes to the deck
+        let pb = ProgressBar::new(notes.len().try_into()?);
+        let mut note_id: NoteId = NoteId(0);
+        let mut num_added = 0usize;
+        let mut failed_in_deck: Vec<Note> = Vec::with_capacity(deck.callouts.len() / 2);
+
+        for note in notes {
+            match client
+                .cards()
+                .add_note(&selected_deck, note.clone(), false, None)
+            {
+                Ok(id) => {
+                    note_id = id;
+                    num_added += 1;
+                    debug!("Added note with ID: {}", note_id.value())
+                }
+                Err(err) => {
+                    failed_in_deck.push(note);
+                    debug!("Failed to create note for: {:?}", &failed_in_deck.last())
+                }
+            };
+            global_pbar.inc(1);
+            pb.inc(1);
+        }
+        num_added_total += num_added;
+        failed_notes.push((deck.source_file, failed_in_deck));
+        decks_pbar.inc(1);
+    }
+
+    info!(
+        "Added {} notes. Failed to add {} notes.",
+        num_added_total,
+        failed_notes.len()
+    );
     // dbg!(markdown::to_html("foo\n\nbar"));
     // dbg!(&decks[0].callouts[0]);
     // dbg!(&decks[0].callouts[0].to_html_only_content(None));
     // let mut f = File::create(path.join("out.html"))?;
     // f.write_all(&decks[0].callouts[0].to_html(None).as_bytes())?;
 
-    let selected_deck = client.find_or_create_deck(&parent_deck);
-    // dbg!(&selected_deck);
-
-    // Add the note to the first deck
-    //
-    let pb = ProgressBar::new(notes.len().try_into()?);
-    let mut note_id: NoteId = NoteId(0);
-    let mut num_added = 0usize;
-    let mut num_failed = 0usize;
-    for note in notes {
-        match client
-            .cards()
-            .add_note(&selected_deck, note.clone(), false, None)
-        {
-            Ok(id) => {
-                note_id = id;
-                num_added += 1;
-                debug!("Added note with ID: {}", note_id.value())
-            }
-            Err(err) => {
-                num_failed += 1;
-                debug!("Failed to create note for: {:?}", note)
-            }
-        };
-        pb.inc(1);
-    }
-    info!(
-        "Added {} notes. Failed to add {} notes.",
-        num_added, num_failed
-    );
+    let mut f = File::create(path.join("failed_notes.txt"))?;
+    f.write_all(
+        failed_notes
+            .par_iter()
+            .map(|note| format!("{:?}", note))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .as_bytes(),
+    )?;
 
     Ok(())
 }

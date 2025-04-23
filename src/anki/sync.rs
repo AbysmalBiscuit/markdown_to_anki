@@ -3,6 +3,8 @@ use crate::callout::Callout;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::basic::Basic;
+use crate::model::get_internal_model;
+use crate::model::traits::{CreateModel, FromCallout};
 use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder, NoteId};
 use indicatif::ProgressBar;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -38,6 +40,7 @@ fn print_models_info(models: &[Model]) {
 pub fn sync(
     path: &PathBuf,
     parent_deck: String,
+    model_type: String,
     model_name: String,
     header_lang: Option<&str>,
 ) -> Result<(), GenericError> {
@@ -72,20 +75,13 @@ pub fn sync(
         num_found_decks, num_total_callouts
     );
 
-    // let callouts: Vec<Callout> = markdown_files
-    //     .par_iter()
-    //     .map(|path| Callout::extract_callouts(path).unwrap())
-    //     .flatten()
-    //     .collect::<Vec<_>>();
-    // dbg!(&callouts);
-
-    // let basics: Vec<Basic> = callouts
-    //     .par_iter()
-    //     .map(|callout| Basic::from_callout(callout, header_lang))
-    //     .collect();
-
-    // let selected_model = client.models().get_by_name(&model_name)?.ok_or();
-    let selected_model = client.find_model(&model_name)?;
+    let internal_model = get_internal_model(&model_type)?;
+    dbg!(&internal_model.create_model(&client, ""));
+    return Ok(());
+    let selected_model = client.find_model(&model_name).unwrap_or_else(|_| {
+        let model_id = internal_model.create_model(&client, "").unwrap();
+        client.models().get_by_id(model_id).unwrap().unwrap()
+    });
     let front_field = selected_model
         .field_ref("Front")
         .ok_or(AnkiError::InvalidField {
@@ -98,10 +94,6 @@ pub fn sync(
             field_name: "Back".to_string(),
             model_name: model_name.clone(),
         })?;
-
-    // let mut f = File::create(path.join("out.html"))?;
-    // f.write_all(&basics[0].back.as_bytes())?;
-    // dbg!(&basics);
 
     let mut failed_notes = Vec::new();
     let mut num_added_total = 0usize;
@@ -161,7 +153,9 @@ pub fn sync(
             pb.inc(1);
         }
         num_added_total += num_added;
-        failed_notes.push((deck.source_file, failed_in_deck));
+        if !failed_in_deck.is_empty() {
+            failed_notes.push((deck.source_file, failed_in_deck));
+        }
         decks_pbar.inc(1);
     }
 

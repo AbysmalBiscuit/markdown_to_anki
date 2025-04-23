@@ -7,6 +7,7 @@ mod error;
 mod find_markdown_files;
 mod model;
 mod progress;
+mod utils;
 use crate::find_markdown_files::find_markdown_files;
 use callout::Callout;
 use cli::cli;
@@ -100,15 +101,19 @@ fn main() -> Result<(), GenericError> {
                 .get_one::<PathBuf>("input")
                 .unwrap()
                 .to_path_buf();
-            let model_name: String = sub_matches
-                .get_one::<String>("model_name")
+            let model_type: String = sub_matches
+                .get_one::<String>("model_type")
                 .unwrap()
                 .to_string();
+            let model_name: String = sub_matches
+                .get_one::<String>("model_name")
+                .cloned()
+                .unwrap_or_else(|| format!("md2anki {}", &model_type));
             let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();
             let header_lang: Option<&str> = sub_matches
                 .get_one::<String>("header_lang")
                 .map(|value| value.as_str());
-            anki::sync::sync(&input_dir, parent_deck, model_name, header_lang)?;
+            anki::sync::sync(&input_dir, parent_deck, model_type, model_name, header_lang)?;
         }
         _ => unreachable!(),
     }

@@ -1,36 +1,31 @@
-pub(crate) mod basic;
-pub(crate) mod traits;
+use std::error::Error;
 
-#[derive(Debug)]
-pub struct Word {
-    front: String,
-    back: String,
-    audio: String,
-    notation: String,
-    quick_notes: String,
-    rules: String,
-    examples: String,
-    related_words_rules: String,
-    select_conjugations: String,
-    irregular_rules: String,
-    additinoal_rules: String,
-    phonetics: String,
-    references: String,
+use basic::Basic;
+use rule::Rule;
+use strum::{Display, EnumString};
+use traits::InternalModel;
+use word::Word;
+
+use crate::error::GenericError;
+
+pub(crate) mod basic;
+pub(crate) mod rule;
+pub(crate) mod traits;
+pub(crate) mod word;
+
+#[derive(Debug, Display, EnumString)]
+pub enum ModelType {
+    Basic(Basic),
+    // Rule(Rule),
+    // Word(Word),
 }
 
-#[derive(Debug)]
-struct Rule {
-    front: String,
-    back: String,
-    audio: String,
-    notation: String,
-    quick_notes: String,
-    alternate_phrasing: String,
-    rules: String,
-    rule_alternate_meanings: String,
-    other_rules_with_similar_meanings: String,
-    rule_used_but_unrelated_to_primary: String,
-    irregular_rules: String,
-    phonetics: String,
-    references: String,
+pub fn get_internal_model(model_type: &str) -> Result<impl InternalModel, GenericError> {
+    match model_type {
+        "Basic" => Ok(Basic {
+            front: "".into(),
+            back: "".into(),
+        }),
+        _ => Err("Unknown model type".into()),
+    }
 }

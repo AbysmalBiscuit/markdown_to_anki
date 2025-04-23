@@ -54,11 +54,17 @@ pub fn cli() -> Command {
                     .default_value("md2anki")
                 )
                 .arg(
-                    Arg::new("model_name")
-                        .help("name of the card model that should be used for the cards")
+                    Arg::new("model_type")
+                        .help("the type of model to use among Basic, Word, Rule")
                         .long("model")
                         .short('m')
-                        .default_value("Korean md2anki Basic (and reversed card)")
+                        .default_value("Basic")
+                )
+                .arg(
+                    Arg::new("model_name")
+                        .help("name of the card model that should be used for the cards")
+                        .long("model-name")
+                        .default_value(None)
                 )
                 .arg(
                     Arg::new("header_lang")

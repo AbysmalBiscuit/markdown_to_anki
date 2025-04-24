@@ -2,9 +2,9 @@ use super::client_traits::Find;
 use crate::callout::Callout;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
+use crate::model::ModelType;
 use crate::model::basic::Basic;
-use crate::model::get_internal_model;
-use crate::model::traits::{CreateModel, FromCallout};
+use crate::model::traits::{CreateModel, InternalModel};
 use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder, NoteId};
 use indicatif::ProgressBar;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -12,6 +12,7 @@ use std::fmt::format;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use std::str::FromStr;
 use tracing::{debug, error, info, warn};
 
 use crate::error::GenericError;
@@ -75,13 +76,20 @@ pub fn sync(
         num_found_decks, num_total_callouts
     );
 
-    let internal_model = get_internal_model(&model_type)?;
-    dbg!(&internal_model.create_model(&client, ""));
+    let internal_model = ModelType::from_str(&model_type)?;
+    // dbg!(&internal_model.create_model(&client, ""));
     return Ok(());
-    let selected_model = client.find_model(&model_name).unwrap_or_else(|_| {
-        let model_id = internal_model.create_model(&client, "").unwrap();
-        client.models().get_by_id(model_id).unwrap().unwrap()
-    });
+    let selected_model = match client.find_model(&model_name) {
+        Ok(model) => model,
+        Err(_) => {
+            let model_id = internal_model.create_model(&client, "")?;
+
+            match client.models().get_by_id(model_id)? {
+                Some(model) => Ok(model),
+                None => Err("failed to create model or to get new model id"),
+            }?
+        }
+    };
     let front_field = selected_model
         .field_ref("Front")
         .ok_or(AnkiError::InvalidField {

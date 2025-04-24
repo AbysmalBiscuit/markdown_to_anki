@@ -25,11 +25,11 @@ command = [
     "run",
     "--",
     "sync",
-    "test",
     "--deck",
-    "Korean::Obsidian",
+    "Korean::md2anki",
     "--model",
-    "Korean md2anki Basic (and reversed card)",
+    "Basic",
+    "test",
 ]
 need_stdout = true
 allow_failures = true

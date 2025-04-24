@@ -14,18 +14,9 @@ pub(crate) mod traits;
 pub(crate) mod word;
 
 #[derive(Debug, Display, EnumString)]
+#[strum(serialize_all = "PascalCase")]
 pub enum ModelType {
     Basic(Basic),
     // Rule(Rule),
     // Word(Word),
-}
-
-pub fn get_internal_model(model_type: &str) -> Result<impl InternalModel, GenericError> {
-    match model_type {
-        "Basic" => Ok(Basic {
-            front: "".into(),
-            back: "".into(),
-        }),
-        _ => Err("Unknown model type".into()),
-    }
 }

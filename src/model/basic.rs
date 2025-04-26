@@ -1,8 +1,10 @@
-use ankiconnect_rs::Field;
+use std::collections::{HashMap, HashSet};
 
-use crate::{callout::Callout, utils::capitalize_first_letter};
+use ankiconnect_rs::{Field, Model, Note, NoteBuilder, NoteError};
 
-use super::traits::{CreateModel, InternalModel};
+use crate::{callout::Callout, error::GenericError, utils::capitalize_first_letter};
+
+use super::traits::InternalModel;
 
 #[derive(Debug)]
 pub struct Basic {
@@ -10,7 +12,14 @@ pub struct Basic {
     pub back: String,
 }
 
-impl CreateModel for Basic {
+impl InternalModel for Basic {
+    fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self {
+        Basic {
+            front: callout.header.clone(),
+            back: callout.content_to_html(header_lang),
+        }
+    }
+
     fn create_model(
         &self,
         client: &ankiconnect_rs::AnkiClient,
@@ -65,14 +74,14 @@ impl CreateModel for Basic {
             .models()
             .create_model("md2anki Basic", &[front, back], css, &templates)
     }
-}
 
-impl InternalModel for Basic {
-    fn from_callout(callout: &Callout, header_lang: Option<&str>) -> Self {
-        Basic {
-            front: callout.header.clone(),
-            back: callout.content_to_html(header_lang),
-        }
+    fn to_note(self, model: Model) -> Result<Note, NoteError> {
+        let mut field_values: HashMap<String, String> = HashMap::with_capacity(2);
+        field_values.insert("Front".into(), self.front);
+        field_values.insert("Back".into(), self.back);
+        let mut tags: HashSet<String> = HashSet::with_capacity(1);
+        tags.insert("md2anki".to_string());
+        Note::new(model, field_values, tags, Vec::new())
     }
 }
 

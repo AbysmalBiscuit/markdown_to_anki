@@ -4,7 +4,7 @@ use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::ModelType;
 use crate::model::basic::Basic;
-use crate::model::traits::{CreateModel, InternalModel};
+use crate::model::traits::InternalModel;
 use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder, NoteId};
 use indicatif::ProgressBar;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -79,7 +79,7 @@ pub fn sync(
     let internal_model = ModelType::from_str(&model_type)?;
     // dbg!(&internal_model.create_model(&client, ""));
     return Ok(());
-    let selected_model = match client.find_model(&model_name) {
+    let anki_model = match client.find_model(&model_name) {
         Ok(model) => model,
         Err(_) => {
             let model_id = internal_model.create_model(&client, "")?;
@@ -90,13 +90,13 @@ pub fn sync(
             }?
         }
     };
-    let front_field = selected_model
+    let front_field = anki_model
         .field_ref("Front")
         .ok_or(AnkiError::InvalidField {
             field_name: "Front".to_string(),
             model_name: model_name.clone(),
         })?;
-    let back_field = selected_model
+    let back_field = anki_model
         .field_ref("Back")
         .ok_or(AnkiError::InvalidField {
             field_name: "Back".to_string(),
@@ -113,21 +113,15 @@ pub fn sync(
     let global_pbar = ProgressBar::new(total_callouts.try_into()?);
     let decks_pbar = ProgressBar::new(decks.len().try_into()?);
     for deck in decks {
-        let basics: Vec<Basic> = deck
+        let internal_models: Vec<ModelType> = deck
             .callouts
             .par_iter()
-            .map(|callout| Basic::from_callout(callout, header_lang))
+            .map(|callout| internal_model.from_callout(callout, header_lang))
             .collect();
 
-        let notes: Vec<_> = basics
+        let notes: Vec<_> = internal_models
             .into_par_iter()
-            .map(|basic| {
-                NoteBuilder::new(selected_model.clone())
-                    .with_field_raw(front_field, &basic.front)
-                    .with_field_raw(back_field, &basic.back)
-                    .with_tag("md2anki")
-                    .build()
-            })
+            .map(|internal| internal.to_note(anki_model.clone()))
             .filter(Result::is_ok)
             .map(Result::unwrap)
             .collect();

@@ -1,14 +1,16 @@
 use std::fmt::Debug;
 
-use ankiconnect_rs::error::Result;
 use ankiconnect_rs::models::ModelId;
-use ankiconnect_rs::{AnkiClient, Deck, DuplicateScope, Field, Note, NoteId};
+use ankiconnect_rs::{
+    AnkiClient, AnkiError, Deck, DuplicateScope, Field, Model, Note, NoteError, NoteId,
+};
+use enum_dispatch::enum_dispatch;
 
 use crate::callout::Callout;
 
-pub trait CreateModel {
-    fn create_model(&self, client: &AnkiClient, css: &str) -> Result<ModelId>;
-}
-pub trait InternalModel: CreateModel + Debug + Default {
-    fn from_callout(callout: &Callout, header_lang: Option<&str>) -> Self;
+#[enum_dispatch]
+pub trait InternalModel: Debug + Default {
+    fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self;
+    fn create_model(&self, client: &AnkiClient, css: &str) -> Result<ModelId, AnkiError>;
+    fn to_note(self, model: Model) -> Result<Note, NoteError>;
 }

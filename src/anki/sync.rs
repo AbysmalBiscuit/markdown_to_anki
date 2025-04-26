@@ -6,7 +6,7 @@ use crate::model::ModelType;
 use crate::model::basic::Basic;
 use crate::model::traits::InternalModel;
 use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder, NoteId};
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::fmt::format;
 use std::fs::{File, read_to_string};
@@ -124,8 +124,18 @@ pub fn sync(
     client.decks().delete(&parent_deck, true);
 
     let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
-    let global_pbar = ProgressBar::new(total_callouts.try_into()?);
-    let decks_pbar = ProgressBar::new(decks.len().try_into()?);
+    let m = MultiProgress::new();
+    let sty = ProgressStyle::with_template(
+        "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
+    )
+    .unwrap()
+    .progress_chars("##-");
+    let global_pbar = m.add(ProgressBar::new(total_callouts.try_into()?));
+    global_pbar.set_style(sty.clone());
+    global_pbar.set_message("Overall");
+    let decks_pbar = m.add(ProgressBar::new(decks.len().try_into()?));
+    decks_pbar.set_style(sty.clone());
+    decks_pbar.set_message("Decks");
     for deck in decks {
         let internal_models: Vec<ModelType> = deck
             .callouts
@@ -139,13 +149,15 @@ pub fn sync(
             .filter(Result::is_ok)
             .map(Result::unwrap)
             .collect();
-        // dbg!(&notes);
+
         let deck_name = deck.get_qualified_name(Some(input_dir), Some(&parent_deck))?;
-        let selected_deck = client.find_or_create_deck(&deck_name);
-        // dbg!(&selected_deck);
+        let selected_deck = client.find_or_create_deck(format!("Current: {}", deck_name).as_str());
 
         // Add the notes to the deck
-        let pb = ProgressBar::new(notes.len().try_into()?);
+        let current_deck_pb = m.add(ProgressBar::new(notes.len().try_into()?));
+        current_deck_pb.set_style(sty.clone());
+        current_deck_pb.set_message(deck_name.clone());
+
         let mut note_id: NoteId = NoteId(0);
         let mut num_added = 0usize;
         let mut failed_in_deck: Vec<Note> = Vec::with_capacity(deck.callouts.len() / 2);
@@ -166,7 +178,7 @@ pub fn sync(
                 }
             };
             global_pbar.inc(1);
-            pb.inc(1);
+            current_deck_pb.inc(1);
         }
         num_added_total += num_added;
         if !failed_in_deck.is_empty() {
@@ -175,11 +187,19 @@ pub fn sync(
         decks_pbar.inc(1);
     }
 
-    info!(
-        "Added {} notes. Failed to add {} notes.",
-        num_added_total,
-        failed_notes.len()
-    );
+    m.clear();
+
+    info!("Added {} notes.", num_added_total);
+    if !failed_notes.is_empty() {
+        warn!(
+            "Failed in {} decks, with a total of {} failed notes.",
+            failed_notes.len(),
+            failed_notes
+                .par_iter()
+                .map(|(path, item)| { item.len() })
+                .sum::<usize>(),
+        )
+    }
 
     let mut f = File::create(input_dir.join("failed_notes.txt"))?;
     f.write_all(

@@ -24,9 +24,6 @@ impl TryFrom<Vec<&str>> for Callout {
             .captures(header_line)
             .ok_or(CalloutError::FailedToParseHeader)?;
 
-        // .expect(
-        // );
-
         let callout_type: CalloutType =
             caps[1].try_into().map_err(|_| CalloutError::UnknownType)?;
         let header: String = caps
@@ -121,6 +118,7 @@ impl TryFrom<Vec<&str>> for Callout {
                 content.push(CalloutContent::Text(line.trim().to_string()));
             }
         }
+
         // Trim leading empty lines
         let mut to_slice = 0;
         let mut content_iter = content.iter();

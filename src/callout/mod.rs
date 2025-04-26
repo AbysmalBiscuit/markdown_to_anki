@@ -101,11 +101,7 @@ impl Callout {
         }
 
         if !content.is_empty() {
-            content
-                // .into_par_iter()
-                // .map(|content| format!(r#"<p dir="auto">{}</p>"#, content))
-                // .collect::<Vec<_>>()
-                .join("\n")
+            content.join("\n")
         } else {
             "".to_string()
         }

@@ -103,7 +103,7 @@ pub fn sync(
     if !css.is_empty() && !created_model {
         client.models().update_styling(&note_type, css.as_str());
         info!("Updated model CSS.");
-        dbg!(&css);
+        // dbg!(&css);
     }
 
     let front_field = note_type

@@ -22,7 +22,6 @@ pub(crate) mod word;
 
 #[derive(Debug, Display, EnumString)]
 #[strum(serialize_all = "PascalCase")]
-// #[derive(Debug)]
 #[enum_dispatch(InternalModel)]
 pub enum ModelType {
     Basic(Basic),

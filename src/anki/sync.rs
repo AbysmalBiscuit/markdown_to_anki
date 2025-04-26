@@ -9,9 +9,9 @@ use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteB
 use indicatif::ProgressBar;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::fmt::format;
-use std::fs::File;
+use std::fs::{File, read_to_string};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tracing::{debug, error, info, warn};
 
@@ -39,22 +39,23 @@ fn print_models_info(models: &[Model]) {
 }
 
 pub fn sync(
-    path: &PathBuf,
+    input_dir: &PathBuf,
     parent_deck: String,
     model_type: String,
     model_name: String,
+    css_file: &Path,
     header_lang: Option<&str>,
 ) -> Result<(), GenericError> {
     print_step(1, 10, Some("Connecting to Anki"), Some(LOOKING_GLASS));
     // Create a client with default connection (localhost:8765)
     let client = AnkiClient::new();
 
-    let markdown_files = find_markdown_files(path)?;
+    let markdown_files = find_markdown_files(input_dir)?;
 
     if markdown_files.is_empty() {
         warn!(
             "Failed to find any markdown files in: '{}'",
-            path.to_str().unwrap()
+            input_dir.to_str().unwrap()
         );
         return Ok(());
     }
@@ -77,31 +78,44 @@ pub fn sync(
     );
 
     let internal_model = ModelType::from_str(&model_type)?;
-    // dbg!(&internal_model.create_model(&client, ""));
-    return Ok(());
-    let anki_model = match client.find_model(&model_name) {
+
+    // Load css file if it exists
+    let css = if css_file.is_file() {
+        read_to_string(css_file)?
+    } else {
+        "".into()
+    };
+
+    let mut created_model = false;
+
+    let note_type = match client.find_model(&model_name) {
         Ok(model) => model,
         Err(_) => {
-            let model_id = internal_model.create_model(&client, "")?;
-
+            let model_id = internal_model.create_model(&client, &css)?;
+            created_model = true;
             match client.models().get_by_id(model_id)? {
                 Some(model) => Ok(model),
                 None => Err("failed to create model or to get new model id"),
             }?
         }
     };
-    let front_field = anki_model
+
+    if !css.is_empty() && !created_model {
+        client.models().update_styling(&note_type, css.as_str());
+        info!("Updated model CSS.");
+        dbg!(&css);
+    }
+
+    let front_field = note_type
         .field_ref("Front")
         .ok_or(AnkiError::InvalidField {
             field_name: "Front".to_string(),
             model_name: model_name.clone(),
         })?;
-    let back_field = anki_model
-        .field_ref("Back")
-        .ok_or(AnkiError::InvalidField {
-            field_name: "Back".to_string(),
-            model_name: model_name.clone(),
-        })?;
+    let back_field = note_type.field_ref("Back").ok_or(AnkiError::InvalidField {
+        field_name: "Back".to_string(),
+        model_name: model_name.clone(),
+    })?;
 
     let mut failed_notes = Vec::new();
     let mut num_added_total = 0usize;
@@ -121,12 +135,12 @@ pub fn sync(
 
         let notes: Vec<_> = internal_models
             .into_par_iter()
-            .map(|internal| internal.to_note(anki_model.clone()))
+            .map(|internal| internal.to_note(note_type.clone()))
             .filter(Result::is_ok)
             .map(Result::unwrap)
             .collect();
         // dbg!(&notes);
-        let deck_name = deck.get_qualified_name(Some(path), Some(&parent_deck))?;
+        let deck_name = deck.get_qualified_name(Some(input_dir), Some(&parent_deck))?;
         let selected_deck = client.find_or_create_deck(&deck_name);
         // dbg!(&selected_deck);
 
@@ -166,13 +180,8 @@ pub fn sync(
         num_added_total,
         failed_notes.len()
     );
-    // dbg!(markdown::to_html("foo\n\nbar"));
-    // dbg!(&decks[0].callouts[0]);
-    // dbg!(&decks[0].callouts[0].to_html_only_content(None));
-    // let mut f = File::create(path.join("out.html"))?;
-    // f.write_all(&decks[0].callouts[0].to_html(None).as_bytes())?;
 
-    let mut f = File::create(path.join("failed_notes.txt"))?;
+    let mut f = File::create(input_dir.join("failed_notes.txt"))?;
     f.write_all(
         failed_notes
             .par_iter()
@@ -184,22 +193,3 @@ pub fn sync(
 
     Ok(())
 }
-
-// This modules is heavily based on:
-// https://github.com/ObsidianToAnki/Obsidian_to_Anki/blob/master/obsidian_to_anki.py#L220
-//
-
-// Requests used by ObsidianToAnki
-// changeDeck
-// deleteNotes
-// findNotes
-// getTags
-// modelFieldNames
-// modelNames
-// multi -> addNote
-// multi -> addTags
-// multi -> notesInfo
-// multi -> storeMediaFile
-// multi -> updateNoteFields
-// notesInfo
-// removeTags

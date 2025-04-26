@@ -67,6 +67,14 @@ pub fn cli() -> Command {
                         .default_value(None)
                 )
                 .arg(
+                    Arg::new("css_file")
+                        .help("path to css file containing card style rules")
+                        .long("css")
+                        .short('c')
+                        .default_value(None)
+                        .value_parser(clap::value_parser!(PathBuf))
+                )
+                .arg(
                     Arg::new("header_lang")
                         .help("2 letter language code (ISO 639-1) to use for callout names. Falls back to English if not specified or not supported.")
                         .long("lang")

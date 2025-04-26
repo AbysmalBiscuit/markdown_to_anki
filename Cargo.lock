@@ -655,6 +655,7 @@ dependencies = [
  "tracing",
  "tracing-indicatif",
  "tracing-subscriber",
+ "ureq",
 ]
 
 [[package]]

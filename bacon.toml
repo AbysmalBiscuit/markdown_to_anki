@@ -29,6 +29,8 @@ command = [
     "Korean::md2anki",
     "--model",
     "Basic",
+    "--css",
+    "cards_style.css",
     "test",
 ]
 need_stdout = true

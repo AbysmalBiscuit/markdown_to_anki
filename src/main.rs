@@ -5,6 +5,7 @@ mod cli;
 mod deck;
 mod error;
 mod find_markdown_files;
+mod http;
 mod model;
 mod progress;
 mod utils;
@@ -14,10 +15,11 @@ use cli::cli;
 use error::GenericError;
 use progress::{LOOKING_GLASS, print_step};
 use rayon::prelude::*;
+use std::process::exit;
 use std::{fs::File, io::Write, path::PathBuf};
-use tracing::info;
 use tracing::instrument;
 use tracing::warn;
+use tracing::{error, info};
 use tracing_indicatif::IndicatifLayer;
 use tracing_subscriber::FmtSubscriber;
 use tracing_subscriber::layer::SubscriberExt;
@@ -110,10 +112,28 @@ fn main() -> Result<(), GenericError> {
                 .cloned()
                 .unwrap_or_else(|| format!("md2anki {}", &model_type));
             let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();
+            let css_file: PathBuf = sub_matches
+                .get_one::<PathBuf>("css_file")
+                .unwrap_or(&PathBuf::default())
+                .to_path_buf();
             let header_lang: Option<&str> = sub_matches
                 .get_one::<String>("header_lang")
                 .map(|value| value.as_str());
-            anki::sync::sync(&input_dir, parent_deck, model_type, model_name, header_lang)?;
+            anki::sync::sync(
+                &input_dir,
+                parent_deck,
+                model_type,
+                model_name,
+                &css_file,
+                header_lang,
+            )?
+            // match anki::sync::sync(&input_dir, parent_deck, model_type, model_name, header_lang) {
+            //     Ok(_) => exit(0),
+            //     Err(err) => {
+            //         error!("{}", err);
+            //         exit(1);
+            //     }
+            // }
         }
         _ => unreachable!(),
     }

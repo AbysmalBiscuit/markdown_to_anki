@@ -1,8 +1,12 @@
+use crate::http::{CreateModelParams, RequestSender};
 use std::collections::{HashMap, HashSet};
 
-use ankiconnect_rs::{Field, Model, Note, NoteBuilder, NoteError};
+use ankiconnect_rs::{Field, Model, Note, NoteBuilder, NoteError, models::ModelId};
+use rayon::prelude::*;
 
-use crate::{callout::Callout, error::GenericError, utils::capitalize_first_letter};
+use crate::{
+    callout::Callout, error::GenericError, http::HttpRequestSender, utils::capitalize_first_letter,
+};
 
 use super::traits::InternalModel;
 
@@ -25,54 +29,83 @@ impl InternalModel for Basic {
         client: &ankiconnect_rs::AnkiClient,
         css: &str,
     ) -> ankiconnect_rs::Result<ankiconnect_rs::models::ModelId> {
-        let front = capitalize_first_letter(&self.front);
-        let front = front.as_str();
-        let back = capitalize_first_letter(&self.front);
-        let back = back.as_str();
         let templates = [
-            (
-                "Recognition",
-                r#"<br>
+            [
+                ("Name", "Recognition"),
+                (
+                    "Front",
+                    r#"<br>
 <div class="center">{{Front}}</div>
 <br>
 <div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>"#,
-                r#"{{FrontSide}}
+                ),
+                (
+                    "Back",
+                    r#"{{FrontSide}}
 
 <hr id=answer>
 
 <div class="center">{{Back}}</div>
 <br>
 <!--{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}-->"#,
-            ),
-            (
-                "Recall",
-                r#"<br>
+                ),
+            ],
+            [
+                ("Name", "Recall"),
+                (
+                    "Front",
+                    r#"<br>
 <div class="center">{{Back}}</div>
 <br>
 <div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Back}}</div>"#,
-                r#"{{FrontSide}}
+                ),
+                (
+                    "Back",
+                    r#"{{FrontSide}}
 
 <hr id=answer>
 
 <div class="center">{{Front}}</div>
 <div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>"#,
-            ),
-            (
-                "Listen",
-                r#"<br>
+                ),
+            ],
+            [
+                ("Name", "Listen"),
+                (
+                    "Front",
+                    r#"<br>
 <div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>"#,
-                r#"
+                ),
+                (
+                    "Back",
+                    r#"
 <hr id=answer>
 
 <div class="center">{{Front}}</div>
 <br>
 <div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>
 <div class="center">{{Back}}</div>"#,
-            ),
+                ),
+            ],
         ];
-        client
-            .models()
-            .create_model("md2anki Basic", &[front, back], css, &templates)
+        let templates = templates
+            .par_iter()
+            .map(|template| {
+                template
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect::<HashMap<String, String>>()
+            })
+            .collect::<Vec<_>>();
+        let sender = HttpRequestSender::new("localhost", 8765);
+        let params = CreateModelParams {
+            model_name: "md2anki Basic",
+            in_order_fields: &["Front", "Back"],
+            css,
+            card_templates: templates,
+        };
+        let id = sender.send::<_, u64>("createModel", Some(params))?;
+        Ok(ModelId(id))
     }
 
     fn to_note(self, model: Model) -> Result<Note, NoteError> {

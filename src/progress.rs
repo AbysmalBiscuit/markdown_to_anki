@@ -1,7 +1,8 @@
+#![allow(unused)]
 use std::sync::LazyLock;
 
 use console::{Emoji, style};
-use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::ProgressStyle;
 
 pub static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍  ", "");
 pub static TRUCK: Emoji<'_, '_> = Emoji("🚚  ", "");

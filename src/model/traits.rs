@@ -1,9 +1,7 @@
 use std::fmt::Debug;
 
 use ankiconnect_rs::models::ModelId;
-use ankiconnect_rs::{
-    AnkiClient, AnkiError, Deck, DuplicateScope, Field, Model, Note, NoteError, NoteId,
-};
+use ankiconnect_rs::{AnkiClient, AnkiError, Model, Note, NoteError};
 use enum_dispatch::enum_dispatch;
 
 use crate::callout::Callout;

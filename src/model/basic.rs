@@ -1,16 +1,14 @@
 use crate::http::{CreateModelParams, RequestSender};
 use std::collections::{HashMap, HashSet};
 
-use ankiconnect_rs::{Field, Model, Note, NoteBuilder, NoteError, models::ModelId};
+use ankiconnect_rs::{Model, Note, NoteError, models::ModelId};
 use rayon::prelude::*;
 
-use crate::{
-    callout::Callout, error::GenericError, http::HttpRequestSender, utils::capitalize_first_letter,
-};
+use crate::{callout::Callout, http::HttpRequestSender};
 
 use super::traits::InternalModel;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Basic {
     pub front: String,
     pub back: String,
@@ -118,11 +116,11 @@ impl InternalModel for Basic {
     }
 }
 
-impl Default for Basic {
-    fn default() -> Self {
-        Basic {
-            front: "".into(),
-            back: "".into(),
-        }
-    }
-}
+// impl Default for Basic {
+//     fn default() -> Self {
+//         Basic {
+//             front: "".into(),
+//             back: "".into(),
+//         }
+//     }
+// }

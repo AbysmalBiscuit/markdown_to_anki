@@ -1,4 +1,4 @@
-use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Deck, DeckId, Model};
+use ankiconnect_rs::{AnkiClient, AnkiConnectError, Deck, DeckId, Model};
 use rayon::prelude::*;
 
 use super::error::CombinedAnkiError;
@@ -44,7 +44,7 @@ impl Find for AnkiClient {
         let found_deck: Result<Deck, CombinedAnkiError> = self.find_deck(deck_name);
         match found_deck {
             Ok(deck) => deck,
-            Err(err) => {
+            Err(_) => {
                 let deck_id = self.decks().create(deck_name).unwrap();
                 self.find_deck_by_id(deck_id).unwrap()
             }

@@ -74,14 +74,22 @@ fn create_markdown_anki_cards_file(
 }
 
 fn main() -> Result<(), GenericError> {
+    let matches = cli().get_matches();
+    let verbosity = match matches.get_count("verbosity") + 2 {
+        0 => tracing::Level::ERROR,
+        1 => tracing::Level::WARN,
+        2 => tracing::Level::INFO,
+        3 => tracing::Level::DEBUG,
+        _ => tracing::Level::TRACE,
+    };
+
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(tracing::Level::INFO) // Or your desired level
+        .with_max_level(verbosity) // Or your desired level
         .finish();
     tracing::subscriber::set_global_default(subscriber)
         .expect("Failed to set global default subscriber");
 
     tracing::info!("Hello from tracing!");
-    let matches = cli().get_matches();
     match matches.subcommand() {
         Some(("markdown", sub_matches)) => {
             let input_dir: PathBuf = sub_matches
@@ -107,6 +115,7 @@ fn main() -> Result<(), GenericError> {
                 .cloned()
                 .unwrap_or_else(|| format!("md2anki {}", &model_type_name));
             let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();
+            let delete_existing = sub_matches.get_flag("delete_existing");
             let css_file: PathBuf = sub_matches
                 .get_one::<PathBuf>("css_file")
                 .unwrap_or(&PathBuf::default())
@@ -117,6 +126,7 @@ fn main() -> Result<(), GenericError> {
             anki::sync::sync(
                 &input_dir,
                 parent_deck,
+                delete_existing,
                 model_type_name,
                 model_name,
                 &css_file,

@@ -3,18 +3,32 @@ pub(crate) mod content;
 pub(crate) mod error;
 pub(crate) mod try_from;
 
-use crate::error::GenericError;
 use callout_type::CalloutType;
 use content::CalloutContent;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use error::CalloutError;
+use rayon::iter::{Either, IntoParallelIterator, ParallelIterator};
 use rayon::prelude::*;
 use std::fmt::Display;
 use std::fs::read_to_string;
 use std::path::Path;
 
 #[derive(Debug)]
+pub struct ExtractCalloutsResult {
+    pub callouts: Vec<Callout>,
+    pub failed: Vec<(String, CalloutError)>,
+}
+
+impl From<(Vec<Callout>, Vec<(String, CalloutError)>)> for ExtractCalloutsResult {
+    fn from(value: (Vec<Callout>, Vec<(String, CalloutError)>)) -> Self {
+        ExtractCalloutsResult {
+            callouts: value.0,
+            failed: value.1,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Callout {
-    pub id: String,
     pub markdown_id: String,
     pub callout_type: CalloutType,
     pub header: String,
@@ -24,7 +38,6 @@ pub struct Callout {
 
 impl Callout {
     pub fn new(
-        id: String,
         markdown_id: String,
         callout_type: CalloutType,
         header: String,
@@ -32,7 +45,6 @@ impl Callout {
         sub_callouts: Vec<Callout>,
     ) -> Callout {
         Callout {
-            id,
             markdown_id,
             callout_type,
             header,
@@ -41,8 +53,16 @@ impl Callout {
         }
     }
 
-    pub fn extract_callouts(path: &Path) -> Result<Vec<Callout>, GenericError> {
-        let content: String = read_to_string(path)?;
+    pub fn extract_callouts(path: &Path) -> ExtractCalloutsResult {
+        let content: String = match read_to_string(path) {
+            Ok(text) => text,
+            Err(err) => {
+                return ExtractCalloutsResult::from((
+                    vec![],
+                    vec![("".to_string(), CalloutError::Io(err))],
+                ));
+            }
+        };
         let blocks: Vec<String> = content
             .split("\n> [!")
             .skip(1)
@@ -55,20 +75,24 @@ impl Callout {
             .map(|block| format!("> [!{}", block))
             .collect();
 
-        let callouts: Vec<Callout> = blocks
-            .par_iter()
-            .map(|block| {
-                block
-                    .par_split('\n')
-                    .filter(|line| line.starts_with('>'))
-                    .collect::<Vec<_>>()
-            })
-            .map(Callout::try_from)
-            .filter(Result::is_ok)
-            .map(Result::unwrap)
-            .collect();
+        let (callouts, failed) = blocks.into_par_iter().partition_map(|block| {
+            let block = block
+                .par_split('\n')
+                .filter(|line| line.starts_with('>'))
+                .collect::<Vec<_>>();
+            match Callout::try_from(&block) {
+                Ok(callout) => {
+                    if callout.markdown_id.is_empty() {
+                        Either::Right((block.join("\n"), CalloutError::NoMarkdownID))
+                    } else {
+                        Either::Left(callout)
+                    }
+                }
+                Err(err) => Either::Right((block.join("\n"), err)),
+            }
+        });
 
-        Ok(callouts)
+        (callouts, failed).into()
     }
 
     pub fn content_to_html(&self, header_lang: Option<&str>) -> String {
@@ -129,19 +153,6 @@ impl Callout {
             self.header,
             self.content_to_html(None)
         )
-    }
-}
-
-impl Default for Callout {
-    fn default() -> Self {
-        Callout {
-            id: "".into(),
-            markdown_id: "".into(),
-            callout_type: CalloutType::Word,
-            header: "Default".into(),
-            content: Vec::new(),
-            sub_callouts: Vec::new(),
-        }
     }
 }
 

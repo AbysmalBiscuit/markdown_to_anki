@@ -5,11 +5,10 @@ use std::{
 
 use strum::Display;
 
-use crate::callout::Callout;
+use crate::callout::{Callout, error::CalloutError};
 
 #[derive(Display, Debug)]
 pub enum DeckError {
-    MissingFileName,
     WrongMarkdownFileExtension(PathBuf),
 }
 
@@ -17,9 +16,9 @@ impl Error for DeckError {}
 
 #[derive(Debug)]
 pub struct Deck {
-    pub name: String,
     pub source_file: PathBuf,
     pub callouts: Vec<Callout>,
+    pub failed: Vec<(String, CalloutError)>,
 }
 
 impl Deck {
@@ -57,14 +56,11 @@ impl TryFrom<&PathBuf> for Deck {
     type Error = DeckError;
 
     fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
+        let callouts_results = Callout::extract_callouts(value);
         Ok(Deck {
-            name: value
-                .file_name()
-                .ok_or(DeckError::MissingFileName)?
-                .to_string_lossy()
-                .into_owned(),
             source_file: value.clone(),
-            callouts: Callout::extract_callouts(value).unwrap(),
+            callouts: callouts_results.callouts,
+            failed: callouts_results.failed,
         })
     }
 }

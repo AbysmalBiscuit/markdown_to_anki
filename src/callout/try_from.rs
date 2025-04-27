@@ -12,6 +12,13 @@ static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
 impl TryFrom<Vec<&str>> for Callout {
     type Error = CalloutError;
     fn try_from(value: Vec<&str>) -> Result<Self, Self::Error> {
+        Callout::try_from(&value)
+    }
+}
+
+impl TryFrom<&Vec<&str>> for Callout {
+    type Error = CalloutError;
+    fn try_from(value: &Vec<&str>) -> Result<Self, Self::Error> {
         let content_length = (value.len() + 1).max(3);
         let mut value_iter = value.iter();
 
@@ -142,7 +149,6 @@ impl TryFrom<Vec<&str>> for Callout {
         }
 
         Ok(Callout::new(
-            "".into(),
             markdown_id.into(),
             callout_type,
             header,

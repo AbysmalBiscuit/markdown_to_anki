@@ -11,6 +11,7 @@ mod progress;
 mod utils;
 use crate::find_markdown_files::find_markdown_files;
 use callout::Callout;
+use callout::ExtractCalloutsResult;
 use cli::cli;
 use error::GenericError;
 use progress::{LOOKING_GLASS, print_step};
@@ -44,9 +45,15 @@ fn create_markdown_anki_cards_file(
     info!("Found {} markdown files.", &markdown_files.len());
     print_step(2, max_step, Some("Converting callouts"), None);
 
-    let callouts: Vec<Callout> = markdown_files
+    let callouts_results: Vec<ExtractCalloutsResult> = markdown_files
         .par_iter()
-        .map(|path| Callout::extract_callouts(path).unwrap())
+        .map(|path| Callout::extract_callouts(path))
+        // .flatten()
+        .collect();
+
+    let callouts: Vec<Callout> = callouts_results
+        .into_par_iter()
+        .map(|result| result.callouts)
         .flatten()
         .collect();
 

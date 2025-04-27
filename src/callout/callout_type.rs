@@ -2,7 +2,7 @@
 // TODO: fix patterns that are unreachable due to duplicate names in Korean
 use strum::{Display, EnumProperty, EnumString};
 
-#[derive(Debug, Display, EnumString, EnumProperty, PartialEq, Eq)]
+#[derive(Debug, Default, Display, EnumString, EnumProperty, PartialEq, Eq)]
 #[strum(serialize_all = "kebab-case")]
 pub enum CalloutType {
     // Builtin callouts
@@ -81,6 +81,7 @@ pub enum CalloutType {
     Reference,
     #[strum(to_string = "rule", serialize = "규칙", props(ko = "규칙"))]
     Rule,
+    #[default]
     #[strum(to_string = "word", serialize = "단어", props(ko = "단어"))]
     Word,
     #[strum(to_string = "conjugation", serialize = "활용", props(ko = "활용"))]

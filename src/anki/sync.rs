@@ -4,7 +4,7 @@ use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::ModelType;
 use crate::model::traits::InternalModelMethods;
-use ankiconnect_rs::{AnkiClient, Model, Note as AnkiConnectNote, NoteId};
+use ankiconnect_rs::{AnkiClient, NoteId};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
@@ -43,15 +43,38 @@ pub fn sync(
 
     print_step(2, 10, Some("Extracting decks"), Some(LOOKING_GLASS));
 
-    let decks = markdown_files
+    let decks: Vec<Deck> = markdown_files
         .par_iter()
         .map(|path| Deck::try_from(path).unwrap())
         .filter(|deck| !deck.callouts.is_empty())
-        .collect::<Vec<_>>();
+        .collect();
 
     let num_found_decks: usize = decks.len();
     let num_total_callouts: usize = decks.par_iter().map(|d| d.callouts.len()).sum();
 
+    // Display errors for callouts that couldn't be parsed
+    let failed_decks: Vec<&Deck> = decks
+        .par_iter()
+        .filter(|deck| !deck.failed.is_empty())
+        .collect();
+    if !failed_decks.is_empty() {
+        for deck in failed_decks {
+            let mut err_msg = Vec::with_capacity(deck.failed.len() + 1);
+            err_msg.push(format!(
+                "Callout parsing errors in deck: '{}'\n",
+                &deck.source_file.to_str().unwrap_or_default()
+            ));
+            for (callout_string, err) in &deck.failed {
+                err_msg.push(format!(
+                    "{}:\n{}\n{}\n",
+                    err,
+                    callout_string,
+                    "=".repeat(80),
+                ));
+            }
+            warn!("{}", err_msg.join("\n"));
+        }
+    }
     info!(
         "Found {} decks with a total of {} callouts",
         num_found_decks, num_total_callouts
@@ -79,8 +102,6 @@ pub fn sync(
             }?
         }
     };
-
-    let deck = &decks[0];
 
     if !css.is_empty() && !created_model {
         let _ = client.models().update_styling(&note_type, css.as_str());

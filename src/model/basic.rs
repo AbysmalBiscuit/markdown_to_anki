@@ -1,7 +1,4 @@
-use crate::{
-    anki::{internal_model::InternalModel, internal_note::InternalNote},
-    http::{CreateModelParams, RequestSender},
-};
+use crate::http::{CreateModelParams, RequestSender};
 use std::collections::{HashMap, HashSet};
 
 use ankiconnect_rs::{NoteError, models::ModelId};
@@ -13,6 +10,7 @@ use super::traits::InternalModelMethods;
 
 #[derive(Debug, Default)]
 pub struct Basic {
+    pub markdown_id: String,
     pub front: String,
     pub back: String,
 }
@@ -20,6 +18,7 @@ pub struct Basic {
 impl InternalModelMethods for Basic {
     fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self {
         Basic {
+            markdown_id: callout.markdown_id.to_owned(),
             front: callout.header.clone(),
             back: callout.content_to_html(header_lang),
         }
@@ -101,7 +100,7 @@ impl InternalModelMethods for Basic {
         let sender = HttpRequestSender::new("localhost", 8765);
         let params = CreateModelParams {
             model_name: "md2anki Basic",
-            in_order_fields: &["Front", "Back"],
+            in_order_fields: &["MarkdownID", "Front", "Back"],
             css,
             card_templates: templates,
         };
@@ -111,6 +110,7 @@ impl InternalModelMethods for Basic {
 
     fn to_note(self, model: ankiconnect_rs::Model) -> Result<ankiconnect_rs::Note, NoteError> {
         let mut field_values: HashMap<String, String> = HashMap::with_capacity(2);
+        field_values.insert("MarkdownID".into(), self.markdown_id);
         field_values.insert("Front".into(), self.front);
         field_values.insert("Back".into(), self.back);
         let mut tags: HashSet<String> = HashSet::with_capacity(1);

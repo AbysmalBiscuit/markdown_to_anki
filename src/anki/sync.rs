@@ -17,29 +17,10 @@ use tracing::{debug, info, warn};
 use crate::error::GenericError;
 use crate::progress::{LOOKING_GLASS, SPARKLE, print_step};
 
-#[allow(unused)]
-fn print_models_info(models: &[Model]) {
-    for (i, model) in models.iter().enumerate() {
-        println!("\n{}. Model: {} (ID: {})", i, model.name(), model.id().0);
-
-        // Print field information
-        println!("   Fields ({}):", model.fields().len());
-        for field in model.fields() {
-            println!("   - {} (position: {})", field.name(), field.ord());
-
-            // Add some helpful info about likely roles
-            if field.is_front() {
-                println!("     Likely role: Question/Front field");
-            } else if field.is_back() {
-                println!("     Likely role: Answer/Back field");
-            }
-        }
-    }
-}
-
 pub fn sync(
     input_dir: &PathBuf,
     parent_deck: String,
+    delete_existing: bool,
     model_type_name: String,
     model_name: String,
     css_file: &Path,
@@ -99,19 +80,23 @@ pub fn sync(
         }
     };
 
+    let deck = &decks[0];
+
     if !css.is_empty() && !created_model {
         let _ = client.models().update_styling(&note_type, css.as_str());
         info!("Updated model CSS.");
         // dbg!(&css);
     }
 
-    let mut failed_notes = Vec::new();
+    let mut failed_notes: Vec<(PathBuf, Vec<(String, ankiconnect_rs::Note)>)> = Vec::new();
     let mut num_added_total = 0usize;
 
     // Delete the deck and re-create it for testing purposes
-    let _ = client.decks().delete(&parent_deck, true);
+    if delete_existing {
+        let _ = client.decks().delete(&parent_deck, true);
+    }
 
-    print_step(4, 10, Some("Adding notes to Anki"), None);
+    // Prepare progress bars
     let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
     let m = MultiProgress::new();
     let sty = ProgressStyle::with_template(
@@ -125,6 +110,9 @@ pub fn sync(
     let decks_pbar = m.add(ProgressBar::new(decks.len().try_into()?));
     decks_pbar.set_style(sty.clone());
     decks_pbar.set_message("Decks");
+
+    // Start main upload loop
+    print_step(4, 10, Some("Adding notes to Anki"), None);
     for deck in decks {
         let internal_models: Vec<ModelType> = deck
             .callouts
@@ -134,13 +122,13 @@ pub fn sync(
 
         let notes: Vec<_> = internal_models
             .into_par_iter()
-            .map(|internal| internal.to_note(note_type.clone().into()))
+            .map(|internal| internal.to_note(note_type.clone()))
             .filter(Result::is_ok)
             .map(Result::unwrap)
             .collect();
 
         let deck_name = deck.get_qualified_name(Some(input_dir), Some(&parent_deck))?;
-        let selected_deck = client.find_or_create_deck(format!("Current: {}", deck_name).as_str());
+        let selected_deck = client.find_or_create_deck(deck_name.as_str());
 
         // Add the notes to the deck
         let current_deck_pb = m.add(ProgressBar::new(notes.len().try_into()?));
@@ -149,13 +137,13 @@ pub fn sync(
 
         let mut note_id: NoteId = NoteId(0);
         let mut num_added = 0usize;
-        let mut failed_in_deck: Vec<ankiconnect_rs::Note> =
+        let mut failed_in_deck: Vec<(String, ankiconnect_rs::Note)> =
             Vec::with_capacity(deck.callouts.len() / 2);
 
         for note in notes {
             match client
                 .cards()
-                .add_note(&selected_deck, note.clone().into(), false, None)
+                .add_note(&selected_deck, note.clone(), false, None)
             {
                 Ok(id) => {
                     note_id = id;
@@ -163,9 +151,8 @@ pub fn sync(
                     debug!("Added note with ID: {}", note_id.value())
                 }
                 Err(err) => {
-                    failed_in_deck.push(note);
-                    debug!("AnkiError: {:?}", err);
-                    debug!("Failed to create note for: {:?}", &failed_in_deck.last())
+                    failed_in_deck.push((err.to_string(), note));
+                    debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
                 }
             };
             global_pbar.inc(1);
@@ -192,12 +179,15 @@ pub fn sync(
         );
 
         let mut f = File::create(input_dir.join("failed_notes.json"))?;
-        let failed_hash_map: HashMap<PathBuf, Vec<InternalNote>> = failed_notes
+        let failed_hash_map: HashMap<PathBuf, Vec<(String, InternalNote)>> = failed_notes
             .into_par_iter()
             .map(|(source, failed)| {
                 (
                     source,
-                    failed.into_par_iter().map(|note| note.into()).collect(),
+                    failed
+                        .into_par_iter()
+                        .map(|(reason, note)| (reason, note.into()))
+                        .collect(),
                 )
             })
             .collect();

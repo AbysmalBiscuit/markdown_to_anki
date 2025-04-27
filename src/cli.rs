@@ -47,6 +47,13 @@ pub fn cli() -> Command {
                         .value_parser(clap::value_parser!(PathBuf))
                 )
                 .arg(
+                    Arg::new("delete_existing")
+                    .help("delete existing notes in the deck")
+                    .long("delete")
+                    // .short('d')
+                    .action(clap::ArgAction::SetTrue)
+                )
+                .arg(
                     Arg::new("deck")
                     .help("name of deck to which cards should be added")
                     .long("deck")

@@ -1,5 +1,3 @@
-use crate::anki::internal_model::InternalModel;
-use crate::anki::internal_note::InternalNote;
 use ankiconnect_rs::NoteError;
 use basic::Basic;
 use enum_dispatch::enum_dispatch;

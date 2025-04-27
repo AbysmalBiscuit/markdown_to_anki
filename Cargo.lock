@@ -651,6 +651,7 @@ dependencies = [
  "rayon",
  "regex",
  "serde",
+ "serde_json",
  "strum",
  "tracing",
  "tracing-indicatif",

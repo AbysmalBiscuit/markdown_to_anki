@@ -1,16 +1,17 @@
-use ankiconnect_rs::Model;
+use crate::anki::internal_model::InternalModel;
+use crate::anki::internal_note::InternalNote;
 use ankiconnect_rs::NoteError;
 use basic::Basic;
 use enum_dispatch::enum_dispatch;
 use rule::Rule;
 use strum::{Display, EnumString};
-use traits::InternalModel;
+use traits::InternalModelMethods;
 use word::Word;
 
 use crate::Callout;
 use ankiconnect_rs::AnkiClient;
+use ankiconnect_rs::AnkiError;
 use ankiconnect_rs::models::ModelId;
-use ankiconnect_rs::{AnkiError, Note};
 
 pub(crate) mod basic;
 pub(crate) mod rule;
@@ -19,7 +20,7 @@ pub(crate) mod word;
 
 #[derive(Debug, Display, EnumString)]
 #[strum(serialize_all = "PascalCase")]
-#[enum_dispatch(InternalModel)]
+#[enum_dispatch(InternalModelMethods)]
 pub enum ModelType {
     Basic(Basic),
     Rule(Rule),

@@ -1,11 +1,13 @@
 use super::client_traits::Find;
+use crate::anki::internal_note::InternalNote;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::ModelType;
-use crate::model::traits::InternalModel;
-use ankiconnect_rs::{AnkiClient, Model, Note, NoteId};
+use crate::model::traits::InternalModelMethods;
+use ankiconnect_rs::{AnkiClient, Model, Note as AnkiConnectNote, NoteId};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use std::collections::HashMap;
 use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -38,7 +40,7 @@ fn print_models_info(models: &[Model]) {
 pub fn sync(
     input_dir: &PathBuf,
     parent_deck: String,
-    model_type: String,
+    model_type_name: String,
     model_name: String,
     css_file: &Path,
     header_lang: Option<&str>,
@@ -74,7 +76,7 @@ pub fn sync(
         num_found_decks, num_total_callouts
     );
 
-    let internal_model = ModelType::from_str(&model_type)?;
+    let model_type = ModelType::from_str(&model_type_name)?;
 
     // Load css file if it exists
     let css = if css_file.is_file() {
@@ -88,7 +90,7 @@ pub fn sync(
     let note_type = match client.find_model(&model_name) {
         Ok(model) => model,
         Err(_) => {
-            let model_id = internal_model.create_model(&client, &css)?;
+            let model_id = model_type.create_model(&client, &css)?;
             created_model = true;
             match client.models().get_by_id(model_id)? {
                 Some(model) => Ok(model),
@@ -127,12 +129,12 @@ pub fn sync(
         let internal_models: Vec<ModelType> = deck
             .callouts
             .par_iter()
-            .map(|callout| internal_model.from_callout(callout, header_lang))
+            .map(|callout| model_type.from_callout(callout, header_lang))
             .collect();
 
         let notes: Vec<_> = internal_models
             .into_par_iter()
-            .map(|internal| internal.to_note(note_type.clone()))
+            .map(|internal| internal.to_note(note_type.clone().into()))
             .filter(Result::is_ok)
             .map(Result::unwrap)
             .collect();
@@ -147,12 +149,13 @@ pub fn sync(
 
         let mut note_id: NoteId = NoteId(0);
         let mut num_added = 0usize;
-        let mut failed_in_deck: Vec<Note> = Vec::with_capacity(deck.callouts.len() / 2);
+        let mut failed_in_deck: Vec<ankiconnect_rs::Note> =
+            Vec::with_capacity(deck.callouts.len() / 2);
 
         for note in notes {
             match client
                 .cards()
-                .add_note(&selected_deck, note.clone(), false, None)
+                .add_note(&selected_deck, note.clone().into(), false, None)
             {
                 Ok(id) => {
                     note_id = id;
@@ -186,18 +189,20 @@ pub fn sync(
                 .par_iter()
                 .map(|(_, item)| { item.len() })
                 .sum::<usize>(),
-        )
-    }
+        );
 
-    let mut f = File::create(input_dir.join("failed_notes.txt"))?;
-    f.write_all(
-        failed_notes
-            .par_iter()
-            .map(|note| format!("{:?}", note))
-            .collect::<Vec<_>>()
-            .join("\n")
-            .as_bytes(),
-    )?;
+        let mut f = File::create(input_dir.join("failed_notes.json"))?;
+        let failed_hash_map: HashMap<PathBuf, Vec<InternalNote>> = failed_notes
+            .into_par_iter()
+            .map(|(source, failed)| {
+                (
+                    source,
+                    failed.into_par_iter().map(|note| note.into()).collect(),
+                )
+            })
+            .collect();
+        f.write_all(serde_json::to_string_pretty(&failed_hash_map)?.as_bytes())?;
+    }
 
     print_step(5, 10, Some("Done"), Some(SPARKLE));
     Ok(())

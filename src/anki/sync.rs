@@ -95,6 +95,13 @@ pub fn sync(
     if delete_existing {
         let _ = client.decks().delete(&parent_deck, true);
     }
+    // else {
+    //     let card_ids_in_deck = client.decks().get_cards_in_deck(&parent_deck)?;
+    //     let cards_in_deck = card_ids_in_deck
+    //         .iter()
+    //         .map(|note_id| client.cards().get_note_info(note_id))
+    //         .collect();
+    // }
 
     // Prepare progress bars
     let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();

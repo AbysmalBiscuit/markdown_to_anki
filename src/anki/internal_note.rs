@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use ankiconnect_rs::FieldMedia;
 use serde::Serialize;
 
 use super::internal_model::InternalModel;

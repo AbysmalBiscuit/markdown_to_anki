@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct CreateModelParams<'a> {
@@ -9,4 +9,3 @@ struct CreateModelParams<'a> {
     css: &'a str,
     card_templates: &'a [HashMap<String, String>],
 }
-

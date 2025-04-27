@@ -4,8 +4,6 @@ use ankiconnect_rs::models::ModelId;
 use ankiconnect_rs::{AnkiClient, AnkiError, NoteError};
 use enum_dispatch::enum_dispatch;
 
-use crate::anki::internal_model::InternalModel;
-use crate::anki::internal_note::InternalNote;
 use crate::callout::Callout;
 
 #[enum_dispatch]

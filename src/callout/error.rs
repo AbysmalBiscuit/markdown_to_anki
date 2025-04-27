@@ -8,5 +8,6 @@ pub enum CalloutError {
         message = "first line should be formatted as a callout '> [!TYPE] TEXT TRANSLITERATION EMOJI'"
     )]
     FailedToParseHeader,
-    UnknownContentType,
+    Io(std::io::Error),
+    NoMarkdownID,
 }

@@ -8,7 +8,6 @@ mod find_markdown_files;
 mod http;
 mod model;
 mod progress;
-mod utils;
 use crate::find_markdown_files::find_markdown_files;
 use callout::Callout;
 use callout::ExtractCalloutsResult;

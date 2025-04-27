@@ -15,15 +15,10 @@ use cli::cli;
 use error::GenericError;
 use progress::{LOOKING_GLASS, print_step};
 use rayon::prelude::*;
-use std::process::exit;
 use std::{fs::File, io::Write, path::PathBuf};
-use tracing::instrument;
+use tracing::info;
 use tracing::warn;
-use tracing::{error, info};
-use tracing_indicatif::IndicatifLayer;
 use tracing_subscriber::FmtSubscriber;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
 fn create_markdown_anki_cards_file(
     input_dir: &PathBuf,

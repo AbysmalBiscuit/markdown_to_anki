@@ -1,22 +1,19 @@
 use super::client_traits::Find;
-use crate::callout::Callout;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::ModelType;
-use crate::model::basic::Basic;
 use crate::model::traits::InternalModel;
-use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Model, Note, NoteBuilder, NoteId};
+use ankiconnect_rs::{AnkiClient, Model, Note, NoteId};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use std::fmt::format;
 use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use crate::error::GenericError;
-use crate::progress::{LOOKING_GLASS, print_step};
+use crate::progress::{LOOKING_GLASS, SPARKLE, print_step};
 
 #[allow(unused)]
 fn print_models_info(models: &[Model]) {
@@ -101,28 +98,18 @@ pub fn sync(
     };
 
     if !css.is_empty() && !created_model {
-        client.models().update_styling(&note_type, css.as_str());
+        let _ = client.models().update_styling(&note_type, css.as_str());
         info!("Updated model CSS.");
         // dbg!(&css);
     }
-
-    let front_field = note_type
-        .field_ref("Front")
-        .ok_or(AnkiError::InvalidField {
-            field_name: "Front".to_string(),
-            model_name: model_name.clone(),
-        })?;
-    let back_field = note_type.field_ref("Back").ok_or(AnkiError::InvalidField {
-        field_name: "Back".to_string(),
-        model_name: model_name.clone(),
-    })?;
 
     let mut failed_notes = Vec::new();
     let mut num_added_total = 0usize;
 
     // Delete the deck and re-create it for testing purposes
-    client.decks().delete(&parent_deck, true);
+    let _ = client.decks().delete(&parent_deck, true);
 
+    print_step(4, 10, Some("Adding notes to Anki"), None);
     let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
     let m = MultiProgress::new();
     let sty = ProgressStyle::with_template(
@@ -174,6 +161,7 @@ pub fn sync(
                 }
                 Err(err) => {
                     failed_in_deck.push(note);
+                    debug!("AnkiError: {:?}", err);
                     debug!("Failed to create note for: {:?}", &failed_in_deck.last())
                 }
             };
@@ -187,7 +175,7 @@ pub fn sync(
         decks_pbar.inc(1);
     }
 
-    m.clear();
+    let _ = m.clear();
 
     info!("Added {} notes.", num_added_total);
     if !failed_notes.is_empty() {
@@ -196,7 +184,7 @@ pub fn sync(
             failed_notes.len(),
             failed_notes
                 .par_iter()
-                .map(|(path, item)| { item.len() })
+                .map(|(_, item)| { item.len() })
                 .sum::<usize>(),
         )
     }
@@ -211,5 +199,6 @@ pub fn sync(
             .as_bytes(),
     )?;
 
+    print_step(5, 10, Some("Done"), Some(SPARKLE));
     Ok(())
 }

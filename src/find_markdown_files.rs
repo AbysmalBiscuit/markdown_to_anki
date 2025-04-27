@@ -2,10 +2,7 @@ use jwalk::WalkDir;
 use std::io::Error as IOError;
 use std::path::PathBuf;
 
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressIterator, ProgressStyle};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
-use crate::progress::SPINNER_STYLE;
+use indicatif::ProgressBar;
 
 pub fn find_markdown_files(input_dir: &PathBuf) -> Result<Vec<PathBuf>, IOError> {
     let pb = ProgressBar::new_spinner();

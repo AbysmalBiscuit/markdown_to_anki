@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use ankiconnect_rs::Model;
 use ankiconnect_rs::NoteError;
 use basic::Basic;
@@ -10,7 +8,6 @@ use traits::InternalModel;
 use word::Word;
 
 use crate::Callout;
-use crate::error::GenericError;
 use ankiconnect_rs::AnkiClient;
 use ankiconnect_rs::models::ModelId;
 use ankiconnect_rs::{AnkiError, Note};
@@ -25,8 +22,8 @@ pub(crate) mod word;
 #[enum_dispatch(InternalModel)]
 pub enum ModelType {
     Basic(Basic),
-    // Rule(Rule),
-    // Word(Word),
+    Rule(Rule),
+    Word(Word),
 }
 
 impl Default for ModelType {

@@ -1,6 +1,6 @@
 use std::{error::Error, fmt::Display};
 
-use ankiconnect_rs::{AnkiClient, AnkiConnectError, AnkiError, Deck, Model};
+use ankiconnect_rs::{AnkiConnectError, AnkiError};
 #[derive(Debug)]
 pub enum CombinedAnkiError {
     AnkiError(AnkiError),

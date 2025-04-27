@@ -1,12 +1,15 @@
-use crate::http::{CreateModelParams, RequestSender};
+use crate::{
+    anki::{internal_model::InternalModel, internal_note::InternalNote},
+    http::{CreateModelParams, RequestSender},
+};
 use std::collections::{HashMap, HashSet};
 
-use ankiconnect_rs::{Model, Note, NoteError, models::ModelId};
+use ankiconnect_rs::{NoteError, models::ModelId};
 use rayon::prelude::*;
 
 use crate::{callout::Callout, http::HttpRequestSender};
 
-use super::traits::InternalModel;
+use super::traits::InternalModelMethods;
 
 #[derive(Debug, Default)]
 pub struct Basic {
@@ -14,7 +17,7 @@ pub struct Basic {
     pub back: String,
 }
 
-impl InternalModel for Basic {
+impl InternalModelMethods for Basic {
     fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self {
         Basic {
             front: callout.header.clone(),
@@ -106,21 +109,14 @@ impl InternalModel for Basic {
         Ok(ModelId(id))
     }
 
-    fn to_note(self, model: Model) -> Result<Note, NoteError> {
+    fn to_note(self, model: ankiconnect_rs::Model) -> Result<ankiconnect_rs::Note, NoteError> {
         let mut field_values: HashMap<String, String> = HashMap::with_capacity(2);
         field_values.insert("Front".into(), self.front);
         field_values.insert("Back".into(), self.back);
         let mut tags: HashSet<String> = HashSet::with_capacity(1);
         tags.insert("md2anki".to_string());
-        Note::new(model, field_values, tags, Vec::new())
+        let media = Vec::new();
+        ankiconnect_rs::Note::new(model, field_values, tags, media)
+        // Ok(InternalNote::new(model, field_values, tags))
     }
 }
-
-// impl Default for Basic {
-//     fn default() -> Self {
-//         Basic {
-//             front: "".into(),
-//             back: "".into(),
-//         }
-//     }
-// }

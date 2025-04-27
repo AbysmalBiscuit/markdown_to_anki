@@ -1,5 +1,9 @@
 #![allow(unused)]
-use super::traits::InternalModel;
+use ankiconnect_rs::NoteError;
+
+use crate::anki::{internal_model::InternalModel, internal_note::InternalNote};
+
+use super::traits::InternalModelMethods;
 
 #[derive(Debug, Default)]
 pub struct Word {
@@ -18,11 +22,8 @@ pub struct Word {
     references: String,
 }
 
-impl InternalModel for Word {
-    fn to_note(
-        self,
-        model: ankiconnect_rs::Model,
-    ) -> Result<ankiconnect_rs::Note, ankiconnect_rs::NoteError> {
+impl InternalModelMethods for Word {
+    fn to_note(self, model: ankiconnect_rs::Model) -> Result<ankiconnect_rs::Note, NoteError> {
         todo!()
     }
     fn create_model(

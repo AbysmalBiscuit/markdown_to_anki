@@ -54,7 +54,7 @@ pub fn cli() -> Command {
                     .default_value("md2anki")
                 )
                 .arg(
-                    Arg::new("model_type")
+                    Arg::new("model_type_name")
                         .help("the type of model to use among Basic, Word, Rule")
                         .long("model")
                         .short('m')

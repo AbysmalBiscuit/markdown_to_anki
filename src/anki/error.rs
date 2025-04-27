@@ -1,7 +1,8 @@
 use std::{error::Error, fmt::Display};
+use strum::Display;
 
 use ankiconnect_rs::{AnkiConnectError, AnkiError};
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum CombinedAnkiError {
     AnkiError(AnkiError),
     AnkiConnectError(AnkiConnectError),
@@ -18,10 +19,8 @@ impl From<AnkiConnectError> for CombinedAnkiError {
     }
 }
 
-impl Display for CombinedAnkiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self,)
-    }
-}
-
 impl Error for CombinedAnkiError {}
+
+#[derive(Debug, Display)]
+pub enum APIError {}
+impl Error for APIError {}

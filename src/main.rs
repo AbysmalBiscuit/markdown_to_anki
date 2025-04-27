@@ -98,14 +98,14 @@ fn main() -> Result<(), GenericError> {
                 .get_one::<PathBuf>("input")
                 .unwrap()
                 .to_path_buf();
-            let model_type: String = sub_matches
-                .get_one::<String>("model_type")
+            let model_type_name: String = sub_matches
+                .get_one::<String>("model_type_name")
                 .unwrap()
                 .to_string();
             let model_name: String = sub_matches
                 .get_one::<String>("model_name")
                 .cloned()
-                .unwrap_or_else(|| format!("md2anki {}", &model_type));
+                .unwrap_or_else(|| format!("md2anki {}", &model_type_name));
             let parent_deck: String = sub_matches.get_one::<String>("deck").unwrap().to_string();
             let css_file: PathBuf = sub_matches
                 .get_one::<PathBuf>("css_file")
@@ -117,7 +117,7 @@ fn main() -> Result<(), GenericError> {
             anki::sync::sync(
                 &input_dir,
                 parent_deck,
-                model_type,
+                model_type_name,
                 model_name,
                 &css_file,
                 header_lang,

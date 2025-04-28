@@ -46,7 +46,9 @@ pub fn sync(args: SyncArgs) -> Result<(), GenericError> {
 
     let decks: Vec<Deck> = markdown_files
         .par_iter()
-        .map(|path| Deck::try_from(path).unwrap())
+        .map(Deck::try_from)
+        .filter(Result::is_ok)
+        .map(Result::unwrap)
         .filter(|deck| !deck.callouts.is_empty())
         .collect();
 

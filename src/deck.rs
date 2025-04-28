@@ -1,5 +1,6 @@
 use std::{
     error::Error,
+    fs::read_to_string,
     path::{Path, PathBuf},
 };
 
@@ -9,6 +10,7 @@ use crate::callout::{Callout, error::CalloutError};
 
 #[derive(Display, Debug)]
 pub enum DeckError {
+    Io(std::io::Error),
     WrongMarkdownFileExtension(PathBuf),
 }
 
@@ -57,6 +59,13 @@ impl TryFrom<&PathBuf> for Deck {
 
     fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
         let callouts_results = Callout::extract_callouts(value);
+        if !callouts_results.failed.is_empty() {
+            let content: String = match read_to_string(value) {
+                Ok(text) => text,
+                Err(err) => "".to_string(),
+            };
+            if !content.is_empty() {}
+        }
         Ok(Deck {
             source_file: value.clone(),
             callouts: callouts_results.callouts,

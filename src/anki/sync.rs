@@ -1,5 +1,6 @@
 use super::client_traits::Find;
 use crate::anki::internal_note::InternalNote;
+use crate::cli::SyncArgs;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::ModelType;
@@ -10,22 +11,22 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use std::collections::HashMap;
 use std::fs::{File, read_to_string};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use tracing::{debug, info, warn};
 
 use crate::error::GenericError;
 use crate::progress::{LOOKING_GLASS, SPARKLE, print_step};
 
-pub fn sync(
-    input_dir: &PathBuf,
-    parent_deck: String,
-    delete_existing: bool,
-    model_type_name: String,
-    model_name: String,
-    css_file: &Path,
-    header_lang: Option<&str>,
-) -> Result<(), GenericError> {
+pub fn sync(args: SyncArgs) -> Result<(), GenericError> {
+    let parent_deck = args.deck.unwrap().to_string();
+    let model_type_name = args.model_type_name.unwrap().to_string();
+    let model_name = args
+        .model_name
+        .unwrap_or_else(|| format!("md2anki {}", &model_type_name));
+    let header_lang: Option<String> = Some(args.header_lang.clone().unwrap().to_string());
+    let input_dir = &args.input_dir;
+
     print_step(1, 10, Some("Connecting to Anki"), Some(LOOKING_GLASS));
     // Create a client with default connection (localhost:8765)
     let client = AnkiClient::new();
@@ -83,6 +84,7 @@ pub fn sync(
     let model_type = ModelType::from_str(&model_type_name)?;
 
     // Load css file if it exists
+    let css_file = args.css_file.clone().unwrap_or_default();
     let css = if css_file.is_file() {
         read_to_string(css_file)?
     } else {
@@ -113,7 +115,7 @@ pub fn sync(
     let mut num_added_total = 0usize;
 
     // Delete the deck and re-create it for testing purposes
-    if delete_existing {
+    if args.delete_existing {
         let _ = client.decks().delete(&parent_deck, true);
     }
     // else {
@@ -145,7 +147,7 @@ pub fn sync(
         let internal_models: Vec<ModelType> = deck
             .callouts
             .par_iter()
-            .map(|callout| model_type.from_callout(callout, header_lang))
+            .map(|callout| model_type.from_callout(callout, header_lang.as_deref()))
             .collect();
 
         let notes: Vec<_> = internal_models

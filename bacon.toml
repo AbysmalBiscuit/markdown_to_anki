@@ -39,3 +39,9 @@ command = [
 need_stdout = true
 allow_failures = true
 allow_warnings = true
+
+[jobs.cli]
+command = ["cargo", "run", "--", "sync", "help"]
+need_stdout = true
+allow_failures = true
+allow_warnings = true

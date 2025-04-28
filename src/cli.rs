@@ -1,92 +1,70 @@
-// use std::ffi::OsString;
 use std::path::PathBuf;
 
-use clap::{Arg, Command};
+use clap::{ArgAction, Args, Parser, Subcommand};
 
-pub fn cli() -> Command {
-    Command::new("md2anki")
-        .about("A markdown to Anki flashcard converter")
-        .subcommand_required(true)
-        .arg_required_else_help(true)
-        .allow_external_subcommands(true)
-        .arg(
-            Arg::new("verbosity")
-                .long("verbose")
-                .short('v')
-                .help("enable verbose output")
-                .action(clap::ArgAction::Count)
-        )
-        .subcommand(
-            Command::new("markdown")
-                .about("convert `word` and `rule` blocks to a format that can be imported with ObsidianToAnki")
-                .arg_required_else_help(true)
-                .arg(
-                    Arg::new("input")
-                        .help("directory to search for files")
-                        .index(1)
-                        .required(true)
-                        .value_parser(clap::value_parser!(PathBuf))
-                )
-                .arg(
-                    Arg::new("output_file")
-                        .help("path to output file, if not specified, then a file ")
-                        .index(2)
-                        .required(false)
-                ),
+#[derive(Debug, Parser)]
+#[command(name = "md2anki")]
+#[command(about="Convert markdown callout notes to Anki flashcards", long_about = None)]
+pub struct Cli {
+    /// Verbose, can be passed multiple times to increase verbosity
+    #[arg(short, long, action = ArgAction::Count, global=true)]
+    pub verbose: u8,
 
-        )
-        .subcommand(
-            Command::new("sync")
-                .about("sync cards to Anki")
-                .arg_required_else_help(true)
-                .arg(
-                    Arg::new("input")
-                        .help("directory to search for files")
-                        .index(1)
-                        .required(true)
-                        .value_parser(clap::value_parser!(PathBuf))
-                )
-                .arg(
-                    Arg::new("delete_existing")
-                    .help("delete existing notes in the deck")
-                    .long("delete")
-                    // .short('d')
-                    .action(clap::ArgAction::SetTrue)
-                )
-                .arg(
-                    Arg::new("deck")
-                    .help("name of deck to which cards should be added")
-                    .long("deck")
-                    .short('d')
-                    .default_value("md2anki")
-                )
-                .arg(
-                    Arg::new("model_type_name")
-                        .help("the type of model to use among Basic, Word, Rule")
-                        .long("model")
-                        .short('m')
-                        .default_value("Basic")
-                )
-                .arg(
-                    Arg::new("model_name")
-                        .help("name of the card model that should be used for the cards")
-                        .long("model-name")
-                        .default_value(None)
-                )
-                .arg(
-                    Arg::new("css_file")
-                        .help("path to css file containing card style rules")
-                        .long("css")
-                        .short('c')
-                        .default_value(None)
-                        .value_parser(clap::value_parser!(PathBuf))
-                )
-                .arg(
-                    Arg::new("header_lang")
-                        .help("2 letter language code (ISO 639-1) to use for callout names. Falls back to English if not specified or not supported.")
-                        .long("lang")
-                        .short('l')
-                        .default_value("")
-                )
-        )
+    /// Quiet, can be passed multiple times to decrease verbosity
+    #[arg(short, long, action = ArgAction::Count, global=true)]
+    pub quiet: u8,
+
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Convert notes to the format used by ObsidianToAnki
+    #[command(arg_required_else_help = true)]
+    ObsidianToAnki {
+        /// Input directory used to search for notes
+        input_dir: PathBuf,
+
+        /// Output file, path to output file, if not specified, then a file will be created inside
+        /// the input directory
+        output_file: Option<PathBuf>,
+    },
+    /// Synchronize notes with Anki using AnkiConnect
+    #[command(arg_required_else_help = true)]
+    Sync(SyncArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct SyncArgs {
+    /// Delete existing notes in deck before syncing
+    #[arg(long = "delete")]
+    pub delete_existing: bool,
+
+    /// Name of deck to which cards should be added
+    #[arg(short, long)]
+    pub deck: Option<String>,
+
+    /// The type of model to use among Basic, Word, Rule
+    #[arg(short, long = "model", value_parser=["Basic", "Rule", "Word"], default_value = "Basic")]
+    pub model_type_name: Option<String>,
+
+    /// Name of the card model that should be used for the cards
+    #[arg(long)]
+    pub model_name: Option<String>,
+
+    /// Path to css file containing card style rules. This is only needed if a new model needs
+    /// to be created. If a model exists, the model style will be updated using the given CSS
+    /// file.
+    #[arg(short, long = "css")]
+    pub css_file: Option<PathBuf>,
+
+    /// 2 letter language code (ISO 639-1) to use for callout names.
+    /// Falls back to English (en) if not specified or not supported.
+    #[arg(short = 'l', long = "lang", default_value = "en")]
+    pub header_lang: Option<String>,
+
+    /// Input path used to search for notes
+    // #[arg()]
+    pub input_dir: PathBuf,
 }

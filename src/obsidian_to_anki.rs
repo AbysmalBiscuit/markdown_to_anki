@@ -4,7 +4,7 @@ use tracing::{info, warn};
 
 use crate::{
     callout::{Callout, ExtractCalloutsResult},
-    error::GenericError,
+    error::{GenericSyncError, M2AnkiError},
     find_markdown_files,
     progress::{LOOKING_GLASS, print_step},
 };
@@ -14,7 +14,7 @@ use rayon::prelude::*;
 pub fn create_markdown_anki_cards_file(
     input_dir: &PathBuf,
     output_file_path: PathBuf,
-) -> Result<(), GenericError> {
+) -> Result<(), M2AnkiError> {
     let max_step = 10;
     print_step(
         1,

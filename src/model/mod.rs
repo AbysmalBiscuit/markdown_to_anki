@@ -1,4 +1,3 @@
-use ankiconnect_rs::NoteError;
 use basic::Basic;
 use enum_dispatch::enum_dispatch;
 use rule::Rule;
@@ -6,10 +5,11 @@ use strum::{Display, EnumString};
 use traits::InternalModelMethods;
 use word::Word;
 
+use crate::client::error::APIError;                                                                              ▐
 use crate::Callout;
-use ankiconnect_rs::AnkiClient;
-use ankiconnect_rs::AnkiError;
-use ankiconnect_rs::models::ModelId;
+use crate::client::AnkiConnectClient;
+use crate::client::model::model_response::Model;
+use crate::client::note::Note;
 
 pub(crate) mod basic;
 pub(crate) mod rule;

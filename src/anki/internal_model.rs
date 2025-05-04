@@ -3,6 +3,9 @@ use rayon::iter::ParallelIterator;
 use rayon::prelude::*;
 use serde::Serialize;
 
+use crate::client::model::model_response::Field;
+use crate::client::model::model_response::Model;
+
 /// Represents a field within a model
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct InternalField {
@@ -10,8 +13,8 @@ pub struct InternalField {
     ord: usize, // Field ordinal/position in the model
 }
 
-impl From<&ankiconnect_rs::Field> for InternalField {
-    fn from(value: &ankiconnect_rs::Field) -> Self {
+impl From<&Field> for InternalField {
+    fn from(value: &Field) -> Self {
         InternalField {
             name: value.name().to_string(),
             ord: value.ord(),
@@ -19,9 +22,9 @@ impl From<&ankiconnect_rs::Field> for InternalField {
     }
 }
 
-impl Into<ankiconnect_rs::Field> for &InternalField {
-    fn into(self) -> ankiconnect_rs::Field {
-        ankiconnect_rs::Field::new(self.name.clone(), self.ord)
+impl Into<Field> for &InternalField {
+    fn into(self) -> Field {
+        Field::new(self.name.clone(), self.ord)
     }
 }
 
@@ -32,10 +35,10 @@ pub struct InternalModel {
     fields: Vec<InternalField>,
 }
 
-impl From<ankiconnect_rs::Model> for InternalModel {
-    fn from(value: ankiconnect_rs::Model) -> Self {
+impl From<Model> for InternalModel {
+    fn from(value: Model) -> Self {
         InternalModel {
-            id: value.id().0,
+            id: value.id,
             name: value.name().to_string(),
             fields: value
                 .fields()
@@ -46,9 +49,9 @@ impl From<ankiconnect_rs::Model> for InternalModel {
     }
 }
 
-impl From<InternalModel> for ankiconnect_rs::Model {
+impl From<InternalModel> for Model {
     fn from(value: InternalModel) -> Self {
-        ankiconnect_rs::Model::new(
+        Model::new(
             value.id,
             value.name,
             value.fields.par_iter().map(|field| field.into()).collect(),

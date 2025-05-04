@@ -1,11 +1,11 @@
-#![allow(unused)]
+// #![allow(unused)]
 mod anki;
 mod callout;
 mod cli;
+mod client;
 mod deck;
 mod error;
 mod find_markdown_files;
-mod http;
 mod model;
 mod obsidian_to_anki;
 mod progress;
@@ -13,14 +13,14 @@ use crate::find_markdown_files::find_markdown_files;
 use anki::sync::sync;
 use callout::Callout;
 use cli::{Cli, Commands};
-use error::GenericError;
+use error::M2AnkiError;
 use obsidian_to_anki::create_markdown_anki_cards_file;
 use std::path::PathBuf;
 use tracing_subscriber::FmtSubscriber;
 
 use clap::Parser;
 
-fn main() -> Result<(), GenericError> {
+fn main() -> Result<(), M2AnkiError> {
     let args = Cli::parse();
 
     let verbosity = match args.verbose + 2 {

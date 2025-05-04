@@ -4,8 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# anki_bridge = { version = "0.8.0", features = ["ureq_blocking"] }
-ankiconnect-rs = "1.0.0"
 clap = { version = "4.5.36", features = ["derive", "unicode", "wrap_help"] }
 indicatif = { version = "0.17.11", features = [
     "rayon",
@@ -27,6 +25,8 @@ tracing-subscriber = "0.3.19"
 enum_dispatch = "0.3.13"
 ureq = { version = "3.0.11", features = ["json"] }
 serde_json = "1.0.140"
+annotate-snippets = "0.11.5"
+thiserror = "2.0.12"
 
 [[bin]]
 name = "md2anki"

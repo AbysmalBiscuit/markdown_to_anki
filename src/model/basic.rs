@@ -37,7 +37,11 @@ impl InternalModelMethods for Basic {
                     r#"<br>
 <div class="center">{{Front}}</div>
 <br>
-<div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>"#,
+{{Audio}}
+<br>
+<div class="center">TTS M:{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>
+<br>
+TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
                 ),
                 (
                     "Back",
@@ -47,7 +51,11 @@ impl InternalModelMethods for Basic {
 
 <div class="center">{{Back}}</div>
 <br>
-<!--{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}-->"#,
+<!--{{Audio}}
+<br>
+<div class="center">TTS M:{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>
+<br>
+TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}-->"#,
                 ),
             ],
             [
@@ -55,9 +63,7 @@ impl InternalModelMethods for Basic {
                 (
                     "Front",
                     r#"<br>
-<div class="center">{{Back}}</div>
-<br>
-<div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Back}}</div>"#,
+<div class="center">{{Back}}</div>"#,
                 ),
                 (
                     "Back",
@@ -66,7 +72,11 @@ impl InternalModelMethods for Basic {
 <hr id=answer>
 
 <div class="center">{{Front}}</div>
-<div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>"#,
+{{Audio}}
+<br>
+<div class="center">TTS M:{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>
+<br>
+TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
                 ),
             ],
             [
@@ -74,17 +84,25 @@ impl InternalModelMethods for Basic {
                 (
                     "Front",
                     r#"<br>
-<div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>"#,
+{{Audio}}
+<br>
+<div class="center">TTS M:{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>
+<br>
+TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
                 ),
                 (
                     "Back",
-                    r#"
+                    r#"{{FrontSide}}
+
 <hr id=answer>
 
 <div class="center">{{Front}}</div>
 <br>
-<div class="center">{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}</div>
-<div class="center">{{Back}}</div>"#,
+<div class="center">{{Back}}</div>
+<br>
+<!--{{Audio}}
+{{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTg01,Microsoft_Heami:Front}}
+{{Back}}-->"#,
                 ),
             ],
         ];
@@ -100,7 +118,7 @@ impl InternalModelMethods for Basic {
         let sender = HttpRequestSender::new("localhost", 8765);
         let params = CreateModelParams {
             model_name: "md2anki Basic",
-            in_order_fields: &["MarkdownID", "Front", "Back"],
+            in_order_fields: &["MarkdownID", "Front", "Back", "Audio"],
             css,
             card_templates: templates,
         };

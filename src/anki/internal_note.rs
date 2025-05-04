@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 
+use crate::client::note::Note;
+
 use super::internal_model::InternalModel;
 
 #[derive(Debug, Clone, Serialize)]
@@ -28,8 +30,8 @@ impl InternalNote {
     }
 }
 
-impl From<ankiconnect_rs::Note> for InternalNote {
-    fn from(value: ankiconnect_rs::Note) -> Self {
+impl From<Note> for InternalNote {
+    fn from(value: Note) -> Self {
         InternalNote {
             id: value.id().map(|id| id.0),
             model: value.model().to_owned().into(),
@@ -39,9 +41,9 @@ impl From<ankiconnect_rs::Note> for InternalNote {
     }
 }
 
-impl From<InternalNote> for ankiconnect_rs::Note {
+impl From<InternalNote> for Note {
     fn from(value: InternalNote) -> Self {
-        ankiconnect_rs::Note::new(
+        Note::new(
             value.model.into(),
             value.field_values,
             value.tags,

@@ -1,9 +1,12 @@
 #![allow(unused)]
-use ankiconnect_rs::NoteError;
-
 use crate::anki::{internal_model::InternalModel, internal_note::InternalNote};
 
 use super::traits::InternalModelMethods;
+use crate::callout::Callout;
+use crate::client::AnkiConnectClient;
+use crate::client::error::APIError;
+use crate::client::model::model_response::Model;
+use crate::client::note::Note;
 
 #[derive(Debug, Default)]
 pub struct Word {
@@ -23,17 +26,13 @@ pub struct Word {
 }
 
 impl InternalModelMethods for Word {
-    fn to_note(self, model: ankiconnect_rs::Model) -> Result<ankiconnect_rs::Note, NoteError> {
+    fn to_note(self, model: Model) -> Result<Note, APIError> {
         todo!()
     }
-    fn create_model(
-        &self,
-        client: &ankiconnect_rs::AnkiClient,
-        css: &str,
-    ) -> Result<ankiconnect_rs::models::ModelId, ankiconnect_rs::AnkiError> {
+    fn create_model(&self, client: &AnkiConnectClient, css: &str) -> Result<Model, APIError> {
         todo!()
     }
-    fn from_callout(&self, callout: &crate::callout::Callout, header_lang: Option<&str>) -> Self {
+    fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self {
         todo!()
     }
 }

@@ -1,10 +1,9 @@
-use crate::http::{CreateModelParams, RequestSender};
+use crate::client::{AnkiConnectClient, error::APIError, model::model_response::Model, note::Note};
 use std::collections::{HashMap, HashSet};
 
-use ankiconnect_rs::{NoteError, models::ModelId};
 use rayon::prelude::*;
 
-use crate::{callout::Callout, http::HttpRequestSender};
+use crate::callout::Callout;
 
 use super::traits::InternalModelMethods;
 
@@ -24,11 +23,7 @@ impl InternalModelMethods for Basic {
         }
     }
 
-    fn create_model(
-        &self,
-        client: &ankiconnect_rs::AnkiClient,
-        css: &str,
-    ) -> ankiconnect_rs::Result<ankiconnect_rs::models::ModelId> {
+    fn create_model(&self, client: &AnkiConnectClient, css: &str) -> Result<Model, APIError> {
         let templates = [
             [
                 ("Name", "Recognition"),
@@ -106,7 +101,7 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
                 ),
             ],
         ];
-        let templates = templates
+        let card_templates = templates
             .par_iter()
             .map(|template| {
                 template
@@ -115,26 +110,26 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
                     .collect::<HashMap<String, String>>()
             })
             .collect::<Vec<_>>();
-        let sender = HttpRequestSender::new("localhost", 8765);
-        let params = CreateModelParams {
-            model_name: "md2anki Basic",
-            in_order_fields: &["MarkdownID", "Front", "Back", "Audio"],
-            css,
-            card_templates: templates,
-        };
-        let id = sender.send::<_, u64>("createModel", Some(params))?;
-        Ok(ModelId(id))
+
+        client.model.create_model(
+            "md2anki Basic",
+            vec!["MarkdownID", "Front", "Back", "Audio"],
+            Some(css),
+            false,
+            card_templates,
+        )
     }
 
-    fn to_note(self, model: ankiconnect_rs::Model) -> Result<ankiconnect_rs::Note, NoteError> {
+    fn to_note(self, model: Model) -> Result<Note, APIError> {
         let mut field_values: HashMap<String, String> = HashMap::with_capacity(2);
         field_values.insert("MarkdownID".into(), self.markdown_id);
         field_values.insert("Front".into(), self.front);
         field_values.insert("Back".into(), self.back);
         let mut tags: HashSet<String> = HashSet::with_capacity(1);
         tags.insert("md2anki".to_string());
-        let media = Vec::new();
-        ankiconnect_rs::Note::new(model, field_values, tags, media)
+        let media: Vec<String> = Vec::new();
+        todo!()
+        // Note::new(model, field_values, tags, media)
         // Ok(InternalNote::new(model, field_values, tags))
     }
 }

@@ -70,27 +70,35 @@ impl Callout {
             .into_par_iter()
             .map(|block| block.trim())
             .filter(|block| {
-                !block.is_empty() && (block.starts_with("word") || block.starts_with("rule"))
+                !block.is_empty() // && (block.starts_with("word") || block.starts_with("rule"))
             })
             .map(|block| format!("> [!{}", block))
             .collect();
 
-        let (callouts, failed) = blocks.into_par_iter().partition_map(|block| {
-            let block = block
-                .par_split('\n')
-                .filter(|line| line.starts_with('>'))
-                .collect::<Vec<_>>();
-            match Callout::try_from(&block) {
-                Ok(callout) => {
-                    if callout.markdown_id.is_empty() {
-                        Either::Right((block.join("\n"), CalloutError::NoMarkdownID))
-                    } else {
-                        Either::Left(callout)
-                    }
+        let (callouts, failed): (Vec<Callout>, Vec<(String, CalloutError)>) =
+            blocks.into_par_iter().partition_map(|block| {
+                let block = block
+                    .par_split('\n')
+                    .filter(|line| line.starts_with('>'))
+                    .collect::<Vec<_>>();
+                match Callout::try_from(&block) {
+                    Ok(callout) => match callout.callout_type {
+                        CalloutType::Word | CalloutType::Rule => {
+                            if callout.markdown_id.is_empty() {
+                                Either::Right((block.join("\n"), CalloutError::NoMarkdownID))
+                            } else {
+                                Either::Left(callout)
+                            }
+                        }
+                        _ => Either::Right(("".to_string(), CalloutError::NotFlashcardCompatible)),
+                    },
+                    Err(err) => Either::Right((block.join("\n"), err)),
                 }
-                Err(err) => Either::Right((block.join("\n"), err)),
-            }
-        });
+            });
+        let failed: Vec<(String, CalloutError)> = failed
+            .into_par_iter()
+            .filter(|(text, err)| !matches!(err, CalloutError::NotFlashcardCompatible))
+            .collect();
 
         (callouts, failed).into()
     }

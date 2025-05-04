@@ -66,7 +66,7 @@ pub enum CalloutType {
     #[strum(to_string = "warning", serialize = "경고", props(ko = "경고"))]
     Warning,
 
-    // Custom cto_string = "",allouts
+    // Custom callouts
     #[strum(to_string = "links", serialize = "링크", props(ko = "링크"))]
     Links,
     #[strum(

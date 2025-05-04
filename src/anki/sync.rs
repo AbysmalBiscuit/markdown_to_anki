@@ -69,7 +69,7 @@ pub fn sync(args: SyncArgs) -> Result<(), GenericError> {
             ));
             for (callout_string, err) in &deck.failed {
                 err_msg.push(format!(
-                    "{}:\n{}\n{}\n",
+                    "{:?}:\n{}\n{}\n",
                     err,
                     callout_string,
                     "=".repeat(80),

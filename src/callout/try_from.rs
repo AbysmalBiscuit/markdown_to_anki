@@ -31,19 +31,20 @@ impl TryFrom<&Vec<&str>> for Callout {
             .captures(header_line)
             .ok_or(CalloutError::FailedToParseHeader)?;
 
-        let callout_type: CalloutType =
-            caps[1].try_into().map_err(|_| CalloutError::UnknownType)?;
+        let callout_type: CalloutType = caps[1]
+            .try_into()
+            .map_err(|_| CalloutError::UnknownCalloutType(caps[1].to_string()))?;
         let header: String = caps
             .get(2)
             .map_or(String::new(), |m| m.as_str().to_string());
         let transliteration = caps
             .get(3)
             .map(|m| m.as_str().trim().to_string())
-            .unwrap_or("".to_string());
+            .unwrap_or_default();
         let emoji = caps
             .get(4)
             .map(|m| m.as_str().trim().to_string())
-            .unwrap_or("".to_string());
+            .unwrap_or_default();
 
         let mut content: Vec<CalloutContent> = Vec::with_capacity(content_length);
         if !emoji.is_empty() {

@@ -104,6 +104,10 @@ impl Callout {
     }
 
     pub fn content_to_html(&self, header_lang: Option<&str>) -> String {
+        if self.content.is_empty() {
+            return "".to_string();
+        }
+
         let mut content: Vec<String> = Vec::with_capacity(self.content.len());
         let mut unconverted_content: Vec<&str> = Vec::with_capacity(self.content.len());
 
@@ -132,11 +136,7 @@ impl Callout {
             unconverted_content.clear();
         }
 
-        if !content.is_empty() {
-            content.join("\n")
-        } else {
-            "".to_string()
-        }
+        content.join("\n")
     }
 
     pub fn to_html(&self, header_lang: Option<&str>) -> String {

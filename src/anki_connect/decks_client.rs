@@ -1,25 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-use super::{
-    AnkiConnectClient,
-    deck::{Deck, DeckId},
-    error::APIError,
-    http_client::HttpClient,
-    response::Response,
-};
+use super::{AnkiConnectClient, deck::DeckId, error::APIError, response::Response};
 
 use rayon::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct DecksClient<'a>(pub &'a AnkiConnectClient);
 
+#[allow(unused)]
 impl DecksClient<'_> {
-    // pub fn new(client: Arc<HttpClient>) -> Self {
-    //     DeckClient {
-    //         http_client: client,
-    //     }
-    // }
-
     /// Gets the complete list of deck names for the current user.
     pub fn deck_names(&self) -> Result<Vec<String>, APIError> {
         let response: Response<Vec<String>> =
@@ -41,10 +30,6 @@ impl DecksClient<'_> {
             None => Err(APIError::DeckNotFound),
         }
     }
-
-    // pub fn get_decks(&self, ) -> Result<HashMap<String, Vec<DeckId>>, APIError> {
-    //     self.0.http_client.request("getDecks", Some(params::GetDecks::new()))
-    // }
 
     /// Create a new empty deck. Will not overwrite a deck that exists with the same name.
     pub fn create_deck(&self, deck_name: &str) -> Result<DeckId, APIError> {

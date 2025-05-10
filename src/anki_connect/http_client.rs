@@ -3,7 +3,6 @@ use std::time::Duration;
 use super::response::Response;
 use super::{error::APIError, params::Params};
 use serde::{Serialize, de::DeserializeOwned};
-// use tracing::trace;
 use ureq::Agent;
 
 #[derive(Debug, Clone)]

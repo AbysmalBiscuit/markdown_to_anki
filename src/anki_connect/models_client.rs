@@ -1,13 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
-
-use rayon::prelude::*;
+use std::collections::HashMap;
 
 use super::{client::AnkiConnectClient, error::APIError, model::Model, response::Response};
 
 #[derive(Debug, Clone)]
 pub struct ModelsClient<'a>(pub &'a AnkiConnectClient);
 
-impl<'a> ModelsClient<'a> {
+impl ModelsClient<'_> {
     pub fn update_model_styling(
         &self,
         model_name: &str,

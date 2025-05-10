@@ -1,15 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
-
-use super::{
-    AnkiConnectClient,
-    deck::{Deck, DeckId},
-    error::APIError,
-    http_client::HttpClient,
-    note::{Note, NoteId},
-    response::Response,
-};
-
-use rayon::prelude::*;
+use super::{AnkiConnectClient, error::APIError, note::NoteId, response::Response};
 
 #[derive(Debug, Clone)]
 pub struct NotesClient<'a>(pub &'a AnkiConnectClient);
@@ -17,8 +6,10 @@ pub struct NotesClient<'a>(pub &'a AnkiConnectClient);
 impl NotesClient<'_> {
     /// Returns an array of note IDs for a given query.
     pub fn find_notes(&self, query: &str) -> Result<Vec<NoteId>, APIError> {
-        let response: Response<Vec<NoteId>> =
-            self.0.http_client.request("findNotes", None::<()>)?;
+        let response: Response<Vec<NoteId>> = self
+            .0
+            .http_client
+            .request("findNotes", Some(params::FindNotes::new(query)))?;
         Ok(response.result.unwrap())
     }
 
@@ -92,7 +83,13 @@ pub mod params {
         check_all_models: bool,
     }
 
-    fn default_duplicate_scope_options_deck_name() -> String {
-        "Default".to_string()
+    fn default_duplicate_scope_options_deck_name<'a>() -> &'a str {
+        "Default"
+    }
+
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct FindNotes<'a> {
+        query: &'a str,
     }
 }

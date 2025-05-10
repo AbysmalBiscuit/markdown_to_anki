@@ -1,4 +1,4 @@
-// #![allow(unused)]
+#![allow(unused)]
 mod anki_connect;
 mod callout;
 mod cli;

@@ -1,15 +1,17 @@
 #![allow(unused)]
 
-use crate::anki::{internal_model::InternalModel, internal_note::InternalNote};
+// use crate::anki::{internal_model::InternalModel, internal_note::InternalNote};
+
+use serde::Serialize;
 
 use super::traits::InternalModelMethods;
+use crate::anki_connect_client::AnkiConnectClient;
+use crate::anki_connect_client::error::APIError;
+use crate::anki_connect_client::model::Model;
+use crate::anki_connect_client::note::Note;
 use crate::callout::Callout;
-use crate::client::AnkiConnectClient;
-use crate::client::error::APIError;
-use crate::client::model::model_response::Model;
-use crate::client::note::Note;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct Rule {
     front: String,
     back: String,
@@ -34,6 +36,13 @@ impl InternalModelMethods for Rule {
         todo!()
     }
     fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self {
+        todo!()
+    }
+    fn to_add_note<'a>(
+        &'a self,
+        deck_name: &'a str,
+        model_name: &'a str,
+    ) -> crate::anki_connect_client::notes::params::AddNote<'a> {
         todo!()
     }
 }

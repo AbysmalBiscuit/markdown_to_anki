@@ -1,11 +1,12 @@
-// #![allow(unused)]
+#![allow(unused)]
 mod anki;
+mod anki_connect_client;
 mod callout;
 mod cli;
-mod client;
 mod deck;
 mod error;
 mod find_markdown_files;
+mod macros;
 mod model;
 mod obsidian_to_anki;
 mod progress;

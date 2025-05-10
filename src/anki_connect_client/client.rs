@@ -2,12 +2,18 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use super::{error::APIError, http_client::HttpClient, model::ModelClient, response::Response};
+use super::{
+    cards::CardClient, decks::DeckClient, error::APIError, http_client::HttpClient,
+    models::ModelClient, notes::NotesClient, response::Response,
+};
 
 #[derive(Debug, Clone)]
 pub struct AnkiConnectClient {
     http_client: Arc<HttpClient>,
-    pub model: ModelClient,
+    pub cards: CardClient,
+    pub decks: DeckClient,
+    pub models: ModelClient,
+    pub notes: NotesClient,
 }
 
 impl AnkiConnectClient {
@@ -15,7 +21,10 @@ impl AnkiConnectClient {
         let http_client = Arc::new(HttpClient::new(url, port));
         AnkiConnectClient {
             http_client: http_client.clone(),
-            model: ModelClient::new(http_client),
+            cards: CardClient::new(http_client.clone()),
+            decks: DeckClient::new(http_client.clone()),
+            models: ModelClient::new(http_client.clone()),
+            notes: NotesClient::new(http_client),
         }
     }
 
@@ -28,11 +37,11 @@ impl AnkiConnectClient {
                     scopes: vec!["actions".into()],
                     actions: vec!["apiReflect".into()],
                 }),
-                1,
+                Some(1),
             ) {
-            Ok(response) => Ok(true),
+            Ok(_) => Ok(true),
             Err(err) => match err {
-                APIError::UreqError(err) => Ok(false),
+                APIError::UreqError(_) => Ok(false),
                 _ => {
                     dbg!(&err);
                     Err(APIError::UnknownError(err.to_string()))

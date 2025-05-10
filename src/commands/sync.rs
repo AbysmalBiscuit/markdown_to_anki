@@ -42,7 +42,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     let client_clone = client.clone();
     let tx_client = tx.clone();
     let client_handle = thread::spawn(move || {
-        let res: bool = client_clone.test_connection().unwrap_or_else(|_| false);
+        let res: bool = client_clone.test_connection().unwrap_or(false);
         tx_client.send(("client", res));
     });
 

@@ -1,21 +1,21 @@
-#![allow(unused)]
-mod anki;
-mod anki_connect_client;
+// #![allow(unused)]
+mod anki_connect;
 mod callout;
 mod cli;
+mod commands;
 mod deck;
 mod error;
 mod find_markdown_files;
 mod macros;
 mod model;
-mod obsidian_to_anki;
 mod progress;
+
+use crate::callout::Callout;
+use crate::cli::{Cli, Commands};
+use crate::commands::{create_markdown_anki_cards_file, sync};
+use crate::error::M2AnkiError;
 use crate::find_markdown_files::find_markdown_files;
-use anki::sync::sync;
-use callout::Callout;
-use cli::{Cli, Commands};
-use error::M2AnkiError;
-use obsidian_to_anki::create_markdown_anki_cards_file;
+
 use std::path::PathBuf;
 use tracing_subscriber::FmtSubscriber;
 

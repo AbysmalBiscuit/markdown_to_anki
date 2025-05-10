@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use super::{
+    AnkiConnectClient,
     deck::{Deck, DeckId},
     error::APIError,
     http_client::HttpClient,
@@ -11,20 +12,13 @@ use super::{
 use rayon::prelude::*;
 
 #[derive(Debug, Clone)]
-pub struct NotesClient {
-    http_client: Arc<HttpClient>,
-}
+pub struct NotesClient<'a>(pub &'a AnkiConnectClient);
 
-impl NotesClient {
-    pub fn new(client: Arc<HttpClient>) -> Self {
-        NotesClient {
-            http_client: client,
-        }
-    }
-
+impl NotesClient<'_> {
     /// Returns an array of note IDs for a given query.
     pub fn find_notes(&self, query: &str) -> Result<Vec<NoteId>, APIError> {
-        let response: Response<Vec<NoteId>> = self.http_client.request("findNotes", None::<()>)?;
+        let response: Response<Vec<NoteId>> =
+            self.0.http_client.request("findNotes", None::<()>)?;
         Ok(response.result.unwrap())
     }
 
@@ -36,7 +30,8 @@ impl NotesClient {
     }
 
     pub fn add_note(&self, add_note: params::AddNote) -> Result<NoteId, APIError> {
-        self.http_client
+        self.0
+            .http_client
             .request("addNote", Some(params::AddNoteNote::new(add_note)))
             .map(|result| result.result.unwrap())
     }

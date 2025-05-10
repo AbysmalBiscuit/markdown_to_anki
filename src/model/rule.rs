@@ -5,10 +5,10 @@
 use serde::Serialize;
 
 use super::traits::InternalModelMethods;
-use crate::anki_connect_client::AnkiConnectClient;
-use crate::anki_connect_client::error::APIError;
-use crate::anki_connect_client::model::Model;
-use crate::anki_connect_client::note::Note;
+use crate::anki_connect::AnkiConnectClient;
+use crate::anki_connect::error::APIError;
+use crate::anki_connect::model::Model;
+use crate::anki_connect::note::Note;
 use crate::callout::Callout;
 
 #[derive(Debug, Default, Serialize)]
@@ -42,7 +42,7 @@ impl InternalModelMethods for Rule {
         &'a self,
         deck_name: &'a str,
         model_name: &'a str,
-    ) -> crate::anki_connect_client::notes::params::AddNote<'a> {
+    ) -> crate::anki_connect::notes_client::params::AddNote<'a> {
         todo!()
     }
 }

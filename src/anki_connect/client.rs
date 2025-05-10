@@ -1,31 +1,35 @@
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
 
 use super::{
-    cards::CardClient, decks::DeckClient, error::APIError, http_client::HttpClient,
-    models::ModelClient, notes::NotesClient, response::Response,
+    cards_client::CardsClient, decks_client::DecksClient, error::APIError, http_client::HttpClient,
+    models_client::ModelsClient, notes_client::NotesClient,
 };
 
 #[derive(Debug, Clone)]
 pub struct AnkiConnectClient {
-    http_client: Arc<HttpClient>,
-    pub cards: CardClient,
-    pub decks: DeckClient,
-    pub models: ModelClient,
-    pub notes: NotesClient,
+    pub http_client: HttpClient,
 }
 
 impl AnkiConnectClient {
     pub fn new(url: Option<&str>, port: Option<usize>) -> Self {
-        let http_client = Arc::new(HttpClient::new(url, port));
-        AnkiConnectClient {
-            http_client: http_client.clone(),
-            cards: CardClient::new(http_client.clone()),
-            decks: DeckClient::new(http_client.clone()),
-            models: ModelClient::new(http_client.clone()),
-            notes: NotesClient::new(http_client),
-        }
+        let http_client = HttpClient::new(url, port);
+        AnkiConnectClient { http_client }
+    }
+
+    pub fn cards(&self) -> CardsClient<'_> {
+        CardsClient(self)
+    }
+
+    pub fn decks(&self) -> DecksClient<'_> {
+        DecksClient(self)
+    }
+
+    pub fn models(&self) -> ModelsClient<'_> {
+        ModelsClient(self)
+    }
+
+    pub fn notes(&self) -> NotesClient<'_> {
+        NotesClient(self)
     }
 
     pub fn test_connection(&self) -> Result<bool, APIError> {

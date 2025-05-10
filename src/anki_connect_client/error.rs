@@ -8,5 +8,6 @@ pub enum APIError {
     FailedConnection,
     UnknownError(String),
     UreqError(ureq::Error),
+    DeckNotFound,
     ModelNotFound(String),
 }

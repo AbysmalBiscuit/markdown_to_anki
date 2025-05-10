@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 
-use crate::client::note::Note;
+use crate::anki_connect_client::note::Note;
 
 use super::internal_model::InternalModel;
 

@@ -5,18 +5,21 @@ use strum::{Display, EnumString};
 use traits::InternalModelMethods;
 use word::Word;
 
-use crate::client::error::APIError;                                                                              ▐
 use crate::Callout;
-use crate::client::AnkiConnectClient;
-use crate::client::model::model_response::Model;
-use crate::client::note::Note;
+use serde::Serialize;
+
+use crate::anki_connect_client::AnkiConnectClient;
+use crate::anki_connect_client::error::APIError;
+use crate::anki_connect_client::model::Model;
+use crate::anki_connect_client::note::Note;
+use crate::anki_connect_client::notes::params::AddNote;
 
 pub(crate) mod basic;
 pub(crate) mod rule;
 pub(crate) mod traits;
 pub(crate) mod word;
 
-#[derive(Debug, Display, EnumString)]
+#[derive(Debug, Display, EnumString, Serialize)]
 #[strum(serialize_all = "PascalCase")]
 #[enum_dispatch(InternalModelMethods)]
 pub enum ModelType {

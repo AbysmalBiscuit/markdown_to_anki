@@ -1,13 +1,20 @@
-use crate::client::{AnkiConnectClient, error::APIError, model::model_response::Model, note::Note};
+use crate::anki_connect_client::{
+    AnkiConnectClient,
+    error::APIError,
+    model::Model,
+    note::Note,
+    notes::params::{AddNote, AddNoteOptions, DuplicateScopeOptions},
+};
 use std::collections::{HashMap, HashSet};
 
 use rayon::prelude::*;
+use serde::Serialize;
 
 use crate::callout::Callout;
 
 use super::traits::InternalModelMethods;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct Basic {
     pub markdown_id: String,
     pub front: String,
@@ -111,7 +118,7 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
             })
             .collect::<Vec<_>>();
 
-        client.model.create_model(
+        client.models.create_model(
             "md2anki Basic",
             vec!["MarkdownID", "Front", "Back", "Audio"],
             Some(css),
@@ -131,5 +138,28 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         todo!()
         // Note::new(model, field_values, tags, media)
         // Ok(InternalNote::new(model, field_values, tags))
+    }
+
+    fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNote<'a> {
+        let mut fields: HashMap<&str, &str> = HashMap::with_capacity(3);
+        fields.insert("MarkdownID", self.markdown_id.as_str());
+        fields.insert("Front", self.front.as_str());
+        fields.insert("Back", self.back.as_str());
+        // fields.insert("MarkdownID", self.markdown_id);
+
+        AddNote::new(
+            deck_name,
+            model_name,
+            fields,
+            AddNoteOptions::new(
+                true,
+                "deck",
+                DuplicateScopeOptions::new(deck_name, true, false),
+            ),
+            Vec::new(),
+            None,
+            None,
+            None,
+        )
     }
 }

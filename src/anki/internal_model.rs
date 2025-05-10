@@ -3,8 +3,8 @@ use rayon::iter::ParallelIterator;
 use rayon::prelude::*;
 use serde::Serialize;
 
-use crate::client::model::model_response::Field;
-use crate::client::model::model_response::Model;
+use crate::anki_connect_client::model::Field;
+use crate::anki_connect_client::model::Model;
 
 /// Represents a field within a model
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]

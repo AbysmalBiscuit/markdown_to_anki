@@ -1,11 +1,17 @@
+use std::env::current_dir;
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use super::response::Response;
 use super::{error::APIError, params::Params};
 use serde::{Serialize, de::DeserializeOwned};
+use tracing::trace;
+use tracing_subscriber::field::debug;
 use ureq::Agent;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HttpClient {
     agent: Agent,
     url: String,
@@ -30,7 +36,7 @@ impl HttpClient {
         &self,
         action: &str,
         params: Option<P>,
-        timeout: usize,
+        timeout: Option<u8>,
     ) -> Result<Response<R>, APIError>
     where
         R: DeserializeOwned + std::fmt::Debug,
@@ -40,7 +46,7 @@ impl HttpClient {
             .agent
             .post(&self.url)
             .config()
-            .timeout_global(Some(Duration::from_secs(1)))
+            .timeout_global(Some(Duration::from_secs(timeout.unwrap_or(1).into())))
             .build()
             .send_json(Params::new(action, params))
             .map_err(APIError::UreqError)?
@@ -75,7 +81,7 @@ impl HttpClient {
             .read_json::<Response<R>>()
         {
             Ok(response) => {
-                dbg!(&response);
+                trace!("{}", &response);
                 if response.error.is_some() {
                     Err(APIError::AnkiConnectError(response.error.unwrap()))
                 } else {
@@ -83,7 +89,7 @@ impl HttpClient {
                 }
             }
             Err(err) => {
-                dbg!(&err);
+                trace!("{}", &err);
                 Err(APIError::UnknownError(err.to_string()))
             }
         }

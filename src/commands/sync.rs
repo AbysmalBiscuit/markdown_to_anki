@@ -1,9 +1,7 @@
-use crate::anki_connect::note::{Note, NoteId};
-use crate::anki_connect::notes_client::params::AddNote;
-// use crate::anki::internal_note::InternalNote;
 use crate::anki_connect::AnkiConnectClient;
 use crate::anki_connect::error::APIError;
 use crate::anki_connect::model::Model;
+use crate::anki_connect::note::NoteId;
 use crate::cli::SyncArgs;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
@@ -19,10 +17,11 @@ use std::str::FromStr;
 use std::thread;
 use tracing::{debug, error, info, warn};
 
-use crate::error::{GenericSyncError, M2AnkiError};
+use crate::error::M2AnkiError;
 use crate::progress::{LOOKING_GLASS, SPARKLE, print_step};
 
 pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
+    // Extract args into variables
     let parent_deck = args.deck.unwrap().to_string();
     let model_type_name = args.model_type_name.unwrap().to_string();
     let model_name = args
@@ -34,85 +33,118 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     print_step(1, 10, Some("Connecting to Anki"), Some(LOOKING_GLASS));
 
     // Create a client with default connection (localhost:8765)
-    // let client = AnkiClient::new();
     let client = AnkiConnectClient::new(None, None);
 
-    // Wait for first checks
+    // Prepare channel for async initial processing
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    // Test client connection
     let client_clone = client.clone();
-    let client_handle = thread::spawn(move || client_clone.test_connection());
+    let tx_client = tx.clone();
+    let client_handle = thread::spawn(move || {
+        let res: bool = client_clone.test_connection().unwrap_or_else(|_| false);
+        tx_client.send(("client", res));
+    });
 
     let input_dir_clone = args.input_dir.clone();
-    let markdown_files_hadle = thread::spawn(move || find_markdown_files(&input_dir_clone));
+    let tx_files = tx.clone();
+    let markdown_files_hadle = thread::spawn(move || {
+        let markdown_files = find_markdown_files(&input_dir_clone).unwrap_or_else(|_| Vec::new());
+        let found_files = !markdown_files.is_empty();
+        tx_files.send(("md_files", found_files));
 
-    let check_result = client_handle.join().map_err(|_| M2AnkiError::ThreadPanic)?;
-    let markdown_files = markdown_files_hadle
-        .join()
-        .map_err(|_| M2AnkiError::ThreadPanic)??;
+        info!("Found {} markdown files", &markdown_files.len());
 
-    if check_result.is_err() || !check_result.unwrap() {
-        error!("Cannot connect to Anki. Make sure it is running.");
-        return Err(M2AnkiError::APIError(APIError::FailedConnection));
-    }
+        print_step(2, 10, Some("Extracting decks"), Some(LOOKING_GLASS));
 
-    if markdown_files.is_empty() {
-        warn!(
-            "Failed to find any markdown files in: '{}'",
-            input_dir.to_str().unwrap()
-        );
-        return Ok(());
-    }
-    info!("Found {} markdown files", &markdown_files.len());
+        let decks: Vec<Deck> = markdown_files
+            .par_iter()
+            .map(Deck::try_from)
+            .filter(Result::is_ok)
+            .map(Result::unwrap)
+            .filter(|deck| !deck.callouts.is_empty())
+            .collect();
 
-    print_step(2, 10, Some("Extracting decks"), Some(LOOKING_GLASS));
+        let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
+        tx_files.send(("num_callouts", total_callouts > 0));
 
-    let decks: Vec<Deck> = markdown_files
-        .par_iter()
-        .map(Deck::try_from)
-        .filter(Result::is_ok)
-        .map(Result::unwrap)
-        .filter(|deck| !deck.callouts.is_empty())
-        .collect();
+        let num_found_decks: usize = decks.len();
+        let num_total_callouts: usize = decks.par_iter().map(|d| d.callouts.len()).sum();
 
-    let num_found_decks: usize = decks.len();
-    let num_total_callouts: usize = decks.par_iter().map(|d| d.callouts.len()).sum();
-
-    // Display errors for callouts that couldn't be parsed
-    let failed_decks: Vec<&Deck> = decks
-        .par_iter()
-        .filter(|deck| !deck.failed.is_empty())
-        .collect();
-    if !failed_decks.is_empty() {
-        for deck in failed_decks {
-            let mut err_msg = Vec::with_capacity(deck.failed.len() + 1);
-            err_msg.push(format!(
-                "Callout parsing errors in deck: '{}'\n",
-                &deck.source_file.to_str().unwrap_or_default()
-            ));
-            for (callout_string, err) in &deck.failed {
+        // Display errors for callouts that couldn't be parsed
+        let failed_decks: Vec<&Deck> = decks
+            .par_iter()
+            .filter(|deck| !deck.failed.is_empty())
+            .collect();
+        if !failed_decks.is_empty() {
+            for deck in failed_decks {
+                let mut err_msg = Vec::with_capacity(deck.failed.len() + 1);
                 err_msg.push(format!(
-                    "{:?}:\n{}\n{}\n",
-                    err,
-                    callout_string,
-                    "=".repeat(80),
+                    "Callout parsing errors in deck: '{}'\n",
+                    &deck.source_file.to_str().unwrap_or_default()
                 ));
+                for (callout_string, err) in &deck.failed {
+                    err_msg.push(format!(
+                        "{:?}:\n{}\n{}\n",
+                        err,
+                        callout_string,
+                        "=".repeat(80),
+                    ));
+                }
+                warn!("{}", err_msg.join("\n"));
             }
-            warn!("{}", err_msg.join("\n"));
+        }
+        info!(
+            "Found {} decks with a total of {} callouts",
+            num_found_decks, num_total_callouts
+        );
+
+        let model_type = ModelType::from_str(&model_type_name);
+
+        // Load css file if it exists
+        let css_file = args.css_file.clone().unwrap_or_default();
+        let css = if css_file.is_file() {
+            read_to_string(css_file)
+        } else {
+            Ok("".to_string())
+        };
+
+        (decks, total_callouts, model_type, css)
+    });
+
+    for _ in 0..3 {
+        match rx.recv() {
+            Ok(("client", false)) => {
+                error!("Cannot connect to Anki. Make sure it is running.");
+                return Err(M2AnkiError::APIError(APIError::FailedConnection(
+                    "Cannot connect to Anki. Make sure it is running.".to_string(),
+                )));
+            }
+            Ok(("md_files", false)) => {
+                warn!(
+                    "Failed to find any markdown files in: '{}'",
+                    input_dir.to_str().unwrap()
+                );
+                return Ok(());
+            }
+            Ok(("num_callouts", false)) => {
+                warn!(
+                    "No callouts found in any of the markdown files in: '{}'",
+                    input_dir.to_str().unwrap()
+                );
+                return Ok(());
+            }
+            _ => continue,
         }
     }
-    info!(
-        "Found {} decks with a total of {} callouts",
-        num_found_decks, num_total_callouts
-    );
 
-    let model_type = ModelType::from_str(&model_type_name)?;
+    client_handle.join().map_err(|_| M2AnkiError::ThreadPanic)?;
+    let (decks, total_callouts, model_type, css) = markdown_files_hadle
+        .join()
+        .map_err(|_| M2AnkiError::ThreadPanic)?;
 
-    // Load css file if it exists
-    let css_file = args.css_file.clone().unwrap_or_default();
-    let css = if css_file.is_file() {
-        read_to_string(css_file)?
-    } else {
-        "".into()
-    };
+    let model_type = model_type?;
+    let css = css?;
 
     let mut created_model = false;
 
@@ -148,7 +180,6 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let _ = client.decks().delete(&parent_deck);
     } else if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
         let card_ids_in_deck = client.notes().find_notes_by_deck_name(&parent_deck)?;
-        dbg!(&card_ids_in_deck);
         // let cards_in_deck = card_ids_in_deck
         //     .iter()
         //     .map(|note_id| client.cards.get_note_info(note_id))
@@ -156,7 +187,6 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     }
 
     // Prepare progress bars
-    let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
     let m = MultiProgress::new();
     let sty = ProgressStyle::with_template(
         "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
@@ -187,13 +217,6 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .par_iter()
             .map(|callout| model_type.from_callout(callout, header_lang.as_deref()))
             .collect();
-
-        // let notes: Vec<_> = internal_models
-        //     .into_par_iter()
-        //     .map(|internal| internal.to_note(note_type))
-        //     .filter(Result::is_ok)
-        //     .map(Result::unwrap)
-        //     .collect();
 
         let deck_name = deck.get_qualified_name(Some(input_dir), Some(&parent_deck))?;
         let _ = client.decks().find_or_create_deck(deck_name.as_str())?;
@@ -254,14 +277,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let mut f = File::create(input_dir.join("failed_notes.json"))?;
         let failed_hash_map: HashMap<PathBuf, Vec<(String, ModelType)>> = failed_notes
             .into_par_iter()
-            .map(|(source, failed)| {
-                (
-                    source,
-                    failed, // .into_par_iter()
-                           // .map(|(reason, note)| (reason, note.into()))
-                           // .collect(),
-                )
-            })
+            .map(|(source, failed)| (source, failed))
             .collect();
         f.write_all(serde_json::to_string_pretty(&failed_hash_map)?.as_bytes())?;
     }

@@ -48,7 +48,7 @@ impl AnkiConnectClient {
                 APIError::UreqError(_) => Ok(false),
                 _ => {
                     dbg!(&err);
-                    Err(APIError::UnknownError(err.to_string()))
+                    Err(APIError::FailedConnection(err.to_string()))
                 }
             },
         }

@@ -5,7 +5,7 @@ use thiserror::Error;
 
 pub enum APIError {
     AnkiConnectError(String),
-    FailedConnection,
+    FailedConnection(String),
     UnknownError(String),
     UreqError(ureq::Error),
     DeckNotFound,

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use super::{
+    AnkiConnectClient,
     deck::{Deck, DeckId},
     error::APIError,
     http_client::HttpClient,
@@ -10,27 +11,26 @@ use super::{
 use rayon::prelude::*;
 
 #[derive(Debug, Clone)]
-pub struct DeckClient {
-    http_client: Arc<HttpClient>,
-}
+pub struct DecksClient<'a>(pub &'a AnkiConnectClient);
 
-impl DeckClient {
-    pub fn new(client: Arc<HttpClient>) -> Self {
-        DeckClient {
-            http_client: client,
-        }
-    }
+impl DecksClient<'_> {
+    // pub fn new(client: Arc<HttpClient>) -> Self {
+    //     DeckClient {
+    //         http_client: client,
+    //     }
+    // }
 
     /// Gets the complete list of deck names for the current user.
     pub fn deck_names(&self) -> Result<Vec<String>, APIError> {
-        let response: Response<Vec<String>> = self.http_client.request("deckNames", None::<()>)?;
+        let response: Response<Vec<String>> =
+            self.0.http_client.request("deckNames", None::<()>)?;
         Ok(response.result.unwrap())
     }
 
     /// Gets the complete list of deck names and their respective IDs for the current user.
     pub fn deck_names_and_ids(&self) -> Result<HashMap<String, DeckId>, APIError> {
         let response: Response<HashMap<String, DeckId>> =
-            self.http_client.request("deckNamesAndIds", None::<()>)?;
+            self.0.http_client.request("deckNamesAndIds", None::<()>)?;
         Ok(response.result.unwrap())
     }
 
@@ -43,12 +43,13 @@ impl DeckClient {
     }
 
     // pub fn get_decks(&self, ) -> Result<HashMap<String, Vec<DeckId>>, APIError> {
-    //     self.http_client.request("getDecks", Some(params::GetDecks::new()))
+    //     self.0.http_client.request("getDecks", Some(params::GetDecks::new()))
     // }
 
     /// Create a new empty deck. Will not overwrite a deck that exists with the same name.
     pub fn create_deck(&self, deck_name: &str) -> Result<DeckId, APIError> {
-        self.http_client
+        self.0
+            .http_client
             .request("createDeck", Some(params::CreateDeck::new(deck_name)))
             .map(|response| response.result.unwrap())
     }
@@ -64,7 +65,8 @@ impl DeckClient {
 
     /// Deletes decks with the given names.
     pub fn delete_decks(&self, decks: Vec<&str>) -> Result<bool, APIError> {
-        self.http_client
+        self.0
+            .http_client
             .request::<Option<()>, _>(
                 "deleteDecks",
                 Some(params::DeleteDecks::new(
@@ -98,4 +100,3 @@ pub mod params {
         cards_too: bool,
     }
 }
-

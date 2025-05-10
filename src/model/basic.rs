@@ -1,9 +1,9 @@
-use crate::anki_connect_client::{
+use crate::anki_connect::{
     AnkiConnectClient,
     error::APIError,
     model::Model,
     note::Note,
-    notes::params::{AddNote, AddNoteOptions, DuplicateScopeOptions},
+    notes_client::params::{AddNote, AddNoteOptions, DuplicateScopeOptions},
 };
 use std::collections::{HashMap, HashSet};
 
@@ -118,7 +118,7 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
             })
             .collect::<Vec<_>>();
 
-        client.models.create_model(
+        client.models().create_model(
             "md2anki Basic",
             vec!["MarkdownID", "Front", "Back", "Audio"],
             Some(css),

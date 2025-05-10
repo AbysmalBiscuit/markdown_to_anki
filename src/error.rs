@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::io::Error as IOError;
 
-use crate::anki_connect_client::error::APIError;
+use crate::anki_connect::error::APIError;
 use crate::deck::DeckError;
 use serde_json::Error as SerdeJsonError;
 

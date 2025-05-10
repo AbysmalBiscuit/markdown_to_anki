@@ -1,9 +1,9 @@
-use crate::anki_connect_client::note::{Note, NoteId};
-use crate::anki_connect_client::notes::params::AddNote;
+use crate::anki_connect::note::{Note, NoteId};
+use crate::anki_connect::notes_client::params::AddNote;
 // use crate::anki::internal_note::InternalNote;
-use crate::anki_connect_client::AnkiConnectClient;
-use crate::anki_connect_client::error::APIError;
-use crate::anki_connect_client::model::Model;
+use crate::anki_connect::AnkiConnectClient;
+use crate::anki_connect::error::APIError;
+use crate::anki_connect::model::Model;
 use crate::cli::SyncArgs;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
@@ -116,7 +116,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
     let mut created_model = false;
 
-    let note_type: Model = match client.models.find_by_name(vec![&model_name]) {
+    let note_type: Model = match client.models().find_by_name(vec![&model_name]) {
         Ok(models) => {
             if models.is_empty() {
                 let new_model = model_type.create_model(&client, &css)?;
@@ -135,7 +135,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
     if !css.is_empty() && !created_model {
         let _ = client
-            .models
+            .models()
             .update_model_styling(&note_type.name, css.as_str());
         info!("Updated model CSS.");
     }
@@ -145,9 +145,9 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
     // Delete the deck and re-create it for testing purposes
     if args.delete_existing {
-        let _ = client.decks.delete(&parent_deck);
-    } else if client.decks.find_deck_id_by_name(&parent_deck).is_ok() {
-        let card_ids_in_deck = client.notes.find_notes_by_deck_name(&parent_deck)?;
+        let _ = client.decks().delete(&parent_deck);
+    } else if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
+        let card_ids_in_deck = client.notes().find_notes_by_deck_name(&parent_deck)?;
         dbg!(&card_ids_in_deck);
         // let cards_in_deck = card_ids_in_deck
         //     .iter()
@@ -196,7 +196,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         //     .collect();
 
         let deck_name = deck.get_qualified_name(Some(input_dir), Some(&parent_deck))?;
-        let _ = client.decks.find_or_create_deck(deck_name.as_str())?;
+        let _ = client.decks().find_or_create_deck(deck_name.as_str())?;
 
         // Add the notes to the deck
         let current_deck_pb = m.add(ProgressBar::new(
@@ -215,7 +215,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
         for note in new_notes {
             match client
-                .notes
+                .notes()
                 .add_note(note.to_add_note(&deck_name, &model_name))
             {
                 Ok(id) => {

@@ -1,14 +1,9 @@
-use std::env::current_dir;
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
 use std::time::Duration;
 
 use super::response::Response;
 use super::{error::APIError, params::Params};
 use serde::{Serialize, de::DeserializeOwned};
-use tracing::trace;
-use tracing_subscriber::field::debug;
+// use tracing::trace;
 use ureq::Agent;
 
 #[derive(Debug, Clone)]
@@ -81,7 +76,7 @@ impl HttpClient {
             .read_json::<Response<R>>()
         {
             Ok(response) => {
-                trace!("{}", &response);
+                // trace!("{}", &response);
                 if response.error.is_some() {
                     Err(APIError::AnkiConnectError(response.error.unwrap()))
                 } else {
@@ -89,7 +84,7 @@ impl HttpClient {
                 }
             }
             Err(err) => {
-                trace!("{}", &err);
+                // trace!("{}", &err);
                 Err(APIError::UnknownError(err.to_string()))
             }
         }

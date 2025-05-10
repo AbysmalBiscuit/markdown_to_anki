@@ -3,11 +3,11 @@ use std::fmt::Debug;
 use enum_dispatch::enum_dispatch;
 use serde::Serialize;
 
-use crate::anki_connect_client::AnkiConnectClient;
-use crate::anki_connect_client::error::APIError;
-use crate::anki_connect_client::model::Model;
-use crate::anki_connect_client::note::Note;
-use crate::anki_connect_client::notes::params::AddNote;
+use crate::anki_connect::AnkiConnectClient;
+use crate::anki_connect::error::APIError;
+use crate::anki_connect::model::Model;
+use crate::anki_connect::note::Note;
+use crate::anki_connect::notes_client::params::AddNote;
 use crate::callout::Callout;
 
 #[enum_dispatch]

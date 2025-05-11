@@ -2,8 +2,8 @@ use crate::anki_connect::{
     error::APIError,
     model::Model,
     models_client::params::CreateModel,
-    note::Note,
-    notes_client::params::{AddNoteNote, AddNoteOptions, DuplicateScopeOptions},
+    note::{Note, NoteId},
+    notes_client::params::{AddNoteNote, AddNoteOptions, DuplicateScopeOptions, UpdateNoteFields},
 };
 use std::{
     borrow::Cow,
@@ -132,16 +132,24 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
     }
 
     fn to_note(self, model: Model) -> Result<Note, APIError> {
-        let mut field_values: HashMap<String, String> = HashMap::with_capacity(2);
-        field_values.insert("MarkdownID".into(), self.markdown_id);
-        field_values.insert("Front".into(), self.front);
-        field_values.insert("Back".into(), self.back);
-        let mut tags: HashSet<String> = HashSet::with_capacity(1);
-        tags.insert("md2anki".to_string());
-        let media: Vec<String> = Vec::new();
         todo!()
+        // let mut field_values: HashMap<String, String> = HashMap::with_capacity(3);
+        // field_values.insert("MarkdownID".into(), self.markdown_id);
+        // field_values.insert("Front".into(), self.front);
+        // field_values.insert("Back".into(), self.back);
+        // let mut tags: HashSet<String> = HashSet::with_capacity(1);
+        // tags.insert("md2anki".to_string());
+        // let media: Vec<String> = Vec::new();
         // Note::new(model, field_values, tags, media)
         // Ok(InternalNote::new(model, field_values, tags))
+    }
+
+    fn get_fields<'a>(&'a self) -> HashMap<&'a str, &'a str> {
+        let mut field_values: HashMap<&'a str, &'a str> = HashMap::with_capacity(3);
+        field_values.insert("MarkdownID", self.markdown_id.as_str());
+        field_values.insert("Front", self.front.as_str());
+        field_values.insert("Back", self.back.as_str());
+        field_values
     }
 
     fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a> {
@@ -149,14 +157,13 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         fields.insert("MarkdownID", self.markdown_id.as_str());
         fields.insert("Front", self.front.as_str());
         fields.insert("Back", self.back.as_str());
-        // fields.insert("MarkdownID", self.markdown_id);
 
         AddNoteNote::new(
             deck_name,
             model_name,
             fields,
             AddNoteOptions::new(
-                true,
+                false,
                 "deck",
                 DuplicateScopeOptions::new(deck_name, true, false),
             ),

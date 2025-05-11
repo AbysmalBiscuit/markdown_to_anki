@@ -18,8 +18,8 @@ impl NotesClient<'_> {
         Ok(response.result.unwrap())
     }
 
-    /// Gets all notes stored in a deck based on deck_name.
-    pub fn find_notes_by_deck_name(&self, deck_name: &str) -> Result<Vec<NoteId>, APIError> {
+    /// Gets ids of all notes stored in a deck based on deck_name.
+    pub fn find_notes_ids_by_deck_name(&self, deck_name: &str) -> Result<Vec<NoteId>, APIError> {
         let notes = self.find_notes(&format!("deck:{}", deck_name))?;
 
         Ok(notes)
@@ -70,9 +70,45 @@ impl NotesClient<'_> {
             .map(|result| result.result.unwrap())
     }
 
-    // pub fn update_note_fields(&self, note: &ModelType) -> Result<bool, APIError> {
-    //     self.0.http_client
-    // }
+    /// Modify the fields of an existing note. You can also include audio, video, or picture files
+    /// which will be added to the note with an optional audio, video, or picture property. Please
+    /// see the documentation for addNote for an explanation of objects in the audio, video, or
+    /// picture array.
+    pub fn update_note_fields(&self, note: params::UpdateNoteFields) -> Result<bool, APIError> {
+        self.0
+            .request::<(), _>("updateNoteFields", Some(note))
+            .map(|_| true)
+    }
+
+    pub fn update_note(&self, id: NoteId, note: &ModelType) -> Result<bool, APIError> {
+        self.update_note_fields(params::UpdateNoteFields::new(
+            params::UpdateNoteFieldsNote::new(id, note.get_fields(), None, None, None),
+        ))
+    }
+
+    pub fn notes_info_by_id(
+        &self,
+        ids: &Vec<NoteId>,
+    ) -> Result<Vec<responses::NoteInfo>, APIError> {
+        self.0
+            .request("notesInfo", Some(params::NotesInfoIds::new(ids)))
+            .map(|response| response.result.unwrap())
+    }
+
+    pub fn notes_info_by_query(&self, query: &str) -> Result<Vec<responses::NoteInfo>, APIError> {
+        self.0
+            .request("notesInfo", Some(params::NotesInfoQuery::new(query)))
+            .map(|response| response.result.unwrap())
+    }
+
+    /// Gets ids of all notes stored in a deck based on deck_name.
+    pub fn get_notes_by_deck_name(
+        &self,
+        deck_name: &str,
+    ) -> Result<Vec<responses::NoteInfo>, APIError> {
+        let query = format!("deck:{}", deck_name);
+        self.notes_info_by_query(&format!("deck:{}", deck_name))
+    }
 
     #[inline]
     pub fn notes_to_add_notes<'a>(
@@ -92,6 +128,8 @@ pub mod params {
 
     use derive_new::new;
     use serde::Serialize;
+
+    use crate::anki_connect::note::NoteId;
 
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
@@ -121,11 +159,11 @@ pub mod params {
         options: AddNoteOptions<'a>,
         #[serde(default, deserialize_with = "default_on_invalid")]
         tags: Vec<&'a str>,
-        #[serde(skip_serializing, skip_deserializing)]
+        #[serde(skip_serializing)]
         audio: Option<()>,
-        #[serde(skip_serializing, skip_deserializing)]
+        #[serde(skip_serializing)]
         video: Option<()>,
-        #[serde(skip_serializing, skip_deserializing)]
+        #[serde(skip_serializing)]
         picture: Option<()>,
     }
 
@@ -156,5 +194,96 @@ pub mod params {
     #[serde(rename_all = "camelCase")]
     pub struct FindNotes<'a> {
         query: &'a str,
+    }
+
+    // notesInfo
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct NotesInfoIds<'a> {
+        notes: &'a Vec<NoteId>,
+    }
+
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct NotesInfoQuery<'a> {
+        query: &'a str,
+    }
+
+    // updateNoteFields
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct UpdateNoteFields<'a> {
+        note: UpdateNoteFieldsNote<'a>,
+    }
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct UpdateNoteFieldsNote<'a> {
+        id: NoteId,
+        fields: HashMap<&'a str, &'a str>,
+        #[serde(skip_serializing)]
+        audio: Option<()>,
+        #[serde(skip_serializing)]
+        video: Option<()>,
+        #[serde(skip_serializing)]
+        picture: Option<()>,
+    }
+}
+
+mod responses {
+    use std::collections::HashMap;
+
+    use rayon::prelude::*;
+    use serde::Deserialize;
+    use serde::Deserializer;
+    use serde_json::Value;
+
+    use crate::anki_connect::{card::CardId, note::NoteId};
+
+    #[derive(Debug, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct NoteInfo {
+        note_id: NoteId,
+        profile: String,
+        model_name: String,
+        tags: Vec<String>,
+        #[serde(deserialize_with = "deserialize_note_field")]
+        fields: Vec<(String, String)>,
+        #[serde(rename = "mod")]
+        mtime: u64,
+        cards: Vec<CardId>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct NoteField {
+        value: String,
+        order: u32,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct NoteFieldResponse {
+        value: String,
+        order: u32,
+    }
+
+    fn deserialize_note_field<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Vec<(String, String)>, D::Error> {
+        // value: HashMap<String, NoteFieldResponse>
+        let value: HashMap<String, NoteFieldResponse> = Deserialize::deserialize(deserializer)?;
+
+        let mut data = value
+            .into_par_iter()
+            .map(|(k, note_field_response)| {
+                (note_field_response.order, k, note_field_response.value)
+            })
+            .collect::<Vec<_>>();
+
+        data.par_sort_unstable_by_key(|(key, _, _)| *key);
+
+        Ok(data
+            .into_par_iter()
+            .map(|(_, name, value)| (name, value))
+            .collect())
     }
 }

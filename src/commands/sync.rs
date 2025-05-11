@@ -182,11 +182,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     if args.delete_existing {
         let _ = client.decks().delete(&parent_deck);
     } else if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
-        let card_ids_in_deck = client.notes().find_notes_by_deck_name(&parent_deck)?;
-        // let cards_in_deck = card_ids_in_deck
-        //     .iter()
-        //     .map(|note_id| client.cards.get_note_info(note_id))
-        //     .collect();
+        let cards_in_deck = client.notes().get_notes_by_deck_name(&parent_deck)?;
+        dbg!(&cards_in_deck);
     }
 
     // Prepare progress bars

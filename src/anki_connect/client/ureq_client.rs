@@ -50,7 +50,7 @@ impl ClientBehavior for UreqClient {
             .read_json::<Response<R>>()
         {
             Ok(response) => {
-                dbg!(&response);
+                // dbg!(&response);
                 if response.error.is_some() {
                     Err(APIError::AnkiConnectError(response.error.unwrap()))
                 } else {
@@ -58,7 +58,7 @@ impl ClientBehavior for UreqClient {
                 }
             }
             Err(err) => {
-                dbg!(&err);
+                // dbg!(&err);
                 Err(APIError::UnknownError(err.to_string()))
             }
         }
@@ -79,6 +79,7 @@ impl ClientBehavior for UreqClient {
         {
             Ok(response) => {
                 // trace!("{}", &response);
+                // dbg!(&response);
                 if response.error.is_some() {
                     Err(APIError::AnkiConnectError(response.error.unwrap()))
                 } else {

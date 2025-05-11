@@ -12,6 +12,7 @@ use basic::Basic;
 
 use enum_dispatch::enum_dispatch;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use strum::{Display, EnumString};
 
@@ -34,6 +35,7 @@ impl Default for ModelType {
 pub trait InternalModelMethods: Debug + Default + Serialize {
     fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self;
     fn to_create_model<'a>(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a>;
+    fn get_fields<'a>(&'a self) -> HashMap<&'a str, &'a str>;
     fn to_note(self, model: Model) -> Result<Note, APIError>;
     fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a>;
 }

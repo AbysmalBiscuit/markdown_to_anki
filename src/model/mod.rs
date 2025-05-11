@@ -1,35 +1,39 @@
+mod basic;
+// mod rule;
+// mod word;
+
+use crate::anki_connect::models_client::params::CreateModel;
+use crate::anki_connect::{APIError, model::Model, note::Note, notes_client::params::AddNoteNote};
+use crate::callout::Callout;
+
 use basic::Basic;
+// use rule::Rule;
+// use word::Word;
+
 use enum_dispatch::enum_dispatch;
-use rule::Rule;
-use strum::{Display, EnumString};
-use traits::InternalModelMethods;
-use word::Word;
-
-use crate::Callout;
 use serde::Serialize;
-
-use crate::anki_connect::AnkiConnectClient;
-use crate::anki_connect::error::APIError;
-use crate::anki_connect::model::Model;
-use crate::anki_connect::note::Note;
-use crate::anki_connect::notes_client::params::AddNote;
-
-pub(crate) mod basic;
-pub(crate) mod rule;
-pub(crate) mod traits;
-pub(crate) mod word;
+use std::fmt::Debug;
+use strum::{Display, EnumString};
 
 #[derive(Debug, Display, EnumString, Serialize)]
 #[strum(serialize_all = "PascalCase")]
 #[enum_dispatch(InternalModelMethods)]
 pub enum ModelType {
     Basic(Basic),
-    Rule(Rule),
-    Word(Word),
+    // Rule(Rule),
+    // Word(Word),
 }
 
 impl Default for ModelType {
     fn default() -> Self {
         ModelType::Basic(Basic::default())
     }
+}
+
+#[enum_dispatch]
+pub trait InternalModelMethods: Debug + Default + Serialize {
+    fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self;
+    fn to_create_model<'a>(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a>;
+    fn to_note(self, model: Model) -> Result<Note, APIError>;
+    fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a>;
 }

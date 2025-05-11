@@ -1,4 +1,10 @@
-use super::{AnkiConnectClient, error::APIError, note::NoteId, response::Response};
+use crate::model::{InternalModelMethods, ModelType};
+
+use super::{
+    AnkiConnectClient, client::ClientBehavior, error::APIError, note::NoteId, response::Response,
+};
+
+use rayon::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct NotesClient<'a>(pub &'a AnkiConnectClient);
@@ -8,7 +14,6 @@ impl NotesClient<'_> {
     pub fn find_notes(&self, query: &str) -> Result<Vec<NoteId>, APIError> {
         let response: Response<Vec<NoteId>> = self
             .0
-            .http_client
             .request("findNotes", Some(params::FindNotes::new(query)))?;
         Ok(response.result.unwrap())
     }
@@ -20,11 +25,65 @@ impl NotesClient<'_> {
         Ok(notes)
     }
 
-    pub fn add_note(&self, add_note: params::AddNote) -> Result<NoteId, APIError> {
+    /// Creates a note using the given deck and model, with the provided field values and tags.
+    /// Returns the identifier of the created note created on success, and null on failure.
+    ///
+    /// Anki-Connect can download audio, video, and picture files and embed them in newly created
+    /// notes. The corresponding audio, video, and picture note members are optional and can be
+    /// omitted. If you choose to include any of them, they should contain a single object or an
+    /// array of objects with the mandatory filename field and one of data, path or url. Refer to
+    /// the documentation of storeMediaFile for an explanation of these fields. The skipHash field
+    /// can be optionally provided to skip the inclusion of files with an MD5 hash that matches the
+    /// provided value. This is useful for avoiding the saving of error pages and stub files. The
+    /// fields member is a list of fields that should play audio or video, or show a picture when
+    /// the card is displayed in Anki. The allowDuplicate member inside options group can be set to
+    /// true to enable adding duplicate cards. Normally duplicate cards can not be added and
+    /// trigger exception.
+    ///
+    /// The duplicateScope member inside options can be used to specify the scope for which
+    /// duplicates are checked. A value of "deck" will only check for duplicates in the target
+    /// deck; any other value will check the entire collection.
+    ///
+    /// - duplicateScopeOptions.deckName will specify which deck to use for checking duplicates in.
+    ///   If undefined or null, the target deck will be used.
+    /// - duplicateScopeOptions.checkChildren will change whether or not duplicate cards are checked
+    ///   in child decks. The default value is false.
+    /// - duplicateScopeOptions.checkAllModels specifies whether duplicate checks are performed
+    ///   across all note types. The default value is false.
+    pub fn add_note(&self, add_note: params::AddNoteNote) -> Result<NoteId, APIError> {
         self.0
-            .http_client
-            .request("addNote", Some(params::AddNoteNote::new(add_note)))
+            .request("addNote", Some(params::AddNote::new(add_note)))
             .map(|result| result.result.unwrap())
+    }
+
+    // pub fn add_note_from_model_type(&self, note: &ModelType, ) -> Result<NoteId, APIError> {
+    //     self.add_note(note.to_add_note(deck_name, model_name))
+    // }
+
+    /// Creates multiple notes using the given deck and model, with the provided field values and
+    /// tags. Returns an array of identifiers of the created notes.
+    /// If errors occur, then no notes are added and instead a string representing a Python list
+    /// describing all errors is returned.
+    pub fn add_notes(&self, notes: params::AddNotes) -> Result<Vec<NoteId>, APIError> {
+        self.0
+            .request("addNotes", Some(notes))
+            .map(|result| result.result.unwrap())
+    }
+
+    // pub fn update_note_fields(&self, note: &ModelType) -> Result<bool, APIError> {
+    //     self.0.http_client
+    // }
+
+    #[inline]
+    pub fn notes_to_add_notes<'a>(
+        notes: &'a Vec<ModelType>,
+        deck_name: &'a str,
+        model_name: &'a str,
+    ) -> Vec<params::AddNoteNote<'a>> {
+        notes
+            .par_iter()
+            .map(|note| note.to_add_note(deck_name, model_name))
+            .collect()
     }
 }
 
@@ -43,13 +102,19 @@ pub mod params {
 
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
-    pub struct AddNoteNote<'a> {
-        note: AddNote<'a>,
+    pub struct AddNote<'a> {
+        note: AddNoteNote<'a>,
     }
 
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
-    pub struct AddNote<'a> {
+    pub struct AddNotes<'a> {
+        notes: Vec<AddNoteNote<'a>>,
+    }
+
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct AddNoteNote<'a> {
         deck_name: &'a str,
         model_name: &'a str,
         fields: HashMap<&'a str, &'a str>,

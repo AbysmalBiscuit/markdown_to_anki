@@ -1,4 +1,6 @@
 #![allow(unused)]
+#[cfg(all(feature = "ureq_blocking", feature = "reqwest_blocking"))]
+compile_error!("Only one of `ureq_blocking` or `reqwest_blocking` features can be enabled.");
 mod anki_connect;
 mod callout;
 mod cli;

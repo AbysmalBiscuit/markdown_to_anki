@@ -1,10 +1,10 @@
+pub(crate) mod anki_connect_client;
 pub(crate) mod card;
 pub(crate) mod cards_client;
-pub(crate) mod client;
+mod client;
 pub(crate) mod deck;
 pub(crate) mod decks_client;
 pub(crate) mod error;
-mod http_client;
 pub(crate) mod model;
 pub(crate) mod models_client;
 pub(crate) mod note;
@@ -13,4 +13,6 @@ mod params;
 mod response;
 mod util;
 
-pub use client::AnkiConnectClient;
+pub use anki_connect_client::AnkiConnectClient;
+pub use client::ClientBehavior;
+pub use error::APIError;

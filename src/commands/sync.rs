@@ -1,12 +1,11 @@
-use crate::anki_connect::AnkiConnectClient;
-use crate::anki_connect::error::APIError;
-use crate::anki_connect::model::Model;
-use crate::anki_connect::note::NoteId;
+use crate::anki_connect::{
+    AnkiConnectClient, ClientBehavior, error::APIError, model::Model, note::NoteId,
+};
 use crate::cli::SyncArgs;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
+use crate::model::InternalModelMethods;
 use crate::model::ModelType;
-use crate::model::traits::InternalModelMethods;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
@@ -151,7 +150,9 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     let note_type: Model = match client.models().find_by_name(vec![&model_name]) {
         Ok(models) => {
             if models.is_empty() {
-                let new_model = model_type.create_model(&client, &css)?;
+                let new_model = client
+                    .models()
+                    .create_model(model_type.to_create_model(&model_name, Some(&css)))?;
                 created_model = true;
                 new_model
             } else {
@@ -159,7 +160,9 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             }
         }
         Err(_) => {
-            let new_model = model_type.create_model(&client, &css)?;
+            let new_model = client
+                .models()
+                .create_model(model_type.to_create_model(&model_name, Some(&css)))?;
             created_model = true;
             new_model
         }

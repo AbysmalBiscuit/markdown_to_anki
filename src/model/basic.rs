@@ -1,18 +1,21 @@
 use crate::anki_connect::{
-    AnkiConnectClient,
     error::APIError,
     model::Model,
+    models_client::params::CreateModel,
     note::Note,
-    notes_client::params::{AddNote, AddNoteOptions, DuplicateScopeOptions},
+    notes_client::params::{AddNoteNote, AddNoteOptions, DuplicateScopeOptions},
 };
-use std::collections::{HashMap, HashSet};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+};
 
 use rayon::prelude::*;
 use serde::Serialize;
 
 use crate::callout::Callout;
 
-use super::traits::InternalModelMethods;
+use super::InternalModelMethods;
 
 #[derive(Debug, Default, Serialize)]
 pub struct Basic {
@@ -30,7 +33,7 @@ impl InternalModelMethods for Basic {
         }
     }
 
-    fn create_model(&self, client: &AnkiConnectClient, css: &str) -> Result<Model, APIError> {
+    fn to_create_model<'a>(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a> {
         let templates = [
             [
                 ("Name", "Recognition"),
@@ -108,21 +111,22 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
                 ),
             ],
         ];
+
         let card_templates = templates
-            .par_iter()
+            .into_par_iter()
             .map(|template| {
                 template
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
-                    .collect::<HashMap<String, String>>()
+                    .into_par_iter()
+                    .map(|(k, v)| (Cow::from(k), Cow::from(v)))
+                    .collect::<HashMap<Cow<'a, str>, Cow<'a, str>>>()
             })
             .collect::<Vec<_>>();
 
-        client.models().create_model(
-            "md2anki Basic",
+        CreateModel::new(
+            model_name,
             vec!["MarkdownID", "Front", "Back", "Audio"],
-            Some(css),
-            false,
+            css,
+            Some(false),
             card_templates,
         )
     }
@@ -140,14 +144,14 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         // Ok(InternalNote::new(model, field_values, tags))
     }
 
-    fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNote<'a> {
+    fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a> {
         let mut fields: HashMap<&str, &str> = HashMap::with_capacity(3);
         fields.insert("MarkdownID", self.markdown_id.as_str());
         fields.insert("Front", self.front.as_str());
         fields.insert("Back", self.back.as_str());
         // fields.insert("MarkdownID", self.markdown_id);
 
-        AddNote::new(
+        AddNoteNote::new(
             deck_name,
             model_name,
             fields,

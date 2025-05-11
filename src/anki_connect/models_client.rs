@@ -1,6 +1,12 @@
 use std::collections::HashMap;
 
-use super::{client::AnkiConnectClient, error::APIError, model::Model, response::Response};
+use params::CreateModel;
+
+use crate::model::ModelType;
+
+use super::{
+    AnkiConnectClient, client::ClientBehavior, error::APIError, model::Model, response::Response,
+};
 
 #[derive(Debug, Clone)]
 pub struct ModelsClient<'a>(pub &'a AnkiConnectClient);
@@ -11,7 +17,7 @@ impl ModelsClient<'_> {
         model_name: &str,
         css: &str,
     ) -> Result<Response<Option<()>>, APIError> {
-        self.0.http_client.request(
+        self.0.request(
             "updateModelStyling",
             Some(params::UpdateModelStyling::new(
                 params::UpdateModelStylingModel::new(model_name, css),
@@ -20,33 +26,27 @@ impl ModelsClient<'_> {
     }
 
     pub fn get_all_names(&self) -> Result<Vec<String>, APIError> {
-        let response: Response<Vec<String>> =
-            self.0.http_client.request("modelNames", None::<()>)?;
+        let response: Response<Vec<String>> = self.0.request("modelNames", None::<()>)?;
         Ok(response.result.unwrap())
     }
 
     pub fn find_by_name(&self, model_names: Vec<&str>) -> Result<Vec<Model>, APIError> {
-        let models = self.0.http_client.request::<Vec<Model>, _>(
+        let models = self.0.request::<Vec<Model>, _>(
             "findModelsByName",
             Some(params::FindModelsByNameParams::new(model_names)),
         )?;
         Ok(models.result.unwrap())
     }
 
-    pub fn create_model(
-        &self,
-        model_name: &str,
-        in_order_fields: Vec<&str>,
-        css: Option<&str>,
-        is_cloze: bool,
-        card_templates: Vec<HashMap<String, String>>,
-    ) -> Result<Model, APIError> {
-        todo!()
+    pub fn create_model(&self, model: params::CreateModel) -> Result<Model, APIError> {
+        self.0
+            .request("createModel", Some(model))
+            .map(|result| result.result.unwrap())
     }
 }
 
 pub mod params {
-    use std::collections::HashMap;
+    use std::{borrow::Cow, collections::HashMap};
 
     use derive_new::new;
     use serde::Serialize;
@@ -73,8 +73,8 @@ pub mod params {
     pub struct CreateModel<'a> {
         model_name: &'a str,
         in_order_fields: Vec<&'a str>,
-        css: &'a str,
-        is_cloze: bool,
-        card_templates: Vec<HashMap<&'a str, &'a str>>,
+        css: Option<&'a str>,
+        is_cloze: Option<bool>,
+        card_templates: Vec<HashMap<Cow<'a, str>, Cow<'a, str>>>,
     }
 }

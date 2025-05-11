@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use super::{AnkiConnectClient, deck::DeckId, error::APIError, response::Response};
+use super::{
+    AnkiConnectClient, client::ClientBehavior, deck::DeckId, error::APIError, response::Response,
+};
 
 use rayon::prelude::*;
 
@@ -11,15 +13,14 @@ pub struct DecksClient<'a>(pub &'a AnkiConnectClient);
 impl DecksClient<'_> {
     /// Gets the complete list of deck names for the current user.
     pub fn deck_names(&self) -> Result<Vec<String>, APIError> {
-        let response: Response<Vec<String>> =
-            self.0.http_client.request("deckNames", None::<()>)?;
+        let response: Response<Vec<String>> = self.0.request("deckNames", None::<()>)?;
         Ok(response.result.unwrap())
     }
 
     /// Gets the complete list of deck names and their respective IDs for the current user.
     pub fn deck_names_and_ids(&self) -> Result<HashMap<String, DeckId>, APIError> {
         let response: Response<HashMap<String, DeckId>> =
-            self.0.http_client.request("deckNamesAndIds", None::<()>)?;
+            self.0.request("deckNamesAndIds", None::<()>)?;
         Ok(response.result.unwrap())
     }
 
@@ -34,7 +35,6 @@ impl DecksClient<'_> {
     /// Create a new empty deck. Will not overwrite a deck that exists with the same name.
     pub fn create_deck(&self, deck_name: &str) -> Result<DeckId, APIError> {
         self.0
-            .http_client
             .request("createDeck", Some(params::CreateDeck::new(deck_name)))
             .map(|response| response.result.unwrap())
     }
@@ -51,7 +51,6 @@ impl DecksClient<'_> {
     /// Deletes decks with the given names.
     pub fn delete_decks(&self, decks: Vec<&str>) -> Result<bool, APIError> {
         self.0
-            .http_client
             .request::<Option<()>, _>(
                 "deleteDecks",
                 Some(params::DeleteDecks::new(

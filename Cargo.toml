@@ -3,6 +3,11 @@ name = "markdown_to_anki"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+ureq_blocking = ["ureq"]
+reqwest_blocking = ["reqwest/blocking"]
+
 [dependencies]
 clap = { version = "4.5.36", features = ["derive", "unicode", "wrap_help"] }
 indicatif = { version = "0.17.11", features = [
@@ -17,13 +22,16 @@ jwalk = "0.8.1"
 markdown = { version = "1.0.0-alpha.23", features = ["json", "log", "serde"] }
 rayon = "1.10.0"
 regex = "1.11.1"
+reqwest = { version = "0.12", optional = true, default-features = false, features = [
+    "json",
+] }
 serde = "1.0.219"
 strum = { version = "0.27.1", features = ["derive"] }
 tracing = "0.1.41"
 tracing-indicatif = "0.3.9"
 tracing-subscriber = "0.3.19"
 enum_dispatch = "0.3.13"
-ureq = { version = "3.0.11", features = ["json"] }
+ureq = { version = "3.0.11", optional = true, features = ["json"] }
 serde_json = "1.0.140"
 annotate-snippets = "0.11.5"
 thiserror = "2.0.12"

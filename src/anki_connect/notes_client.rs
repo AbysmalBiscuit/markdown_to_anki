@@ -123,6 +123,16 @@ impl NotesClient<'_> {
     }
 }
 
+#[derive(Debug)]
+pub enum NoteOperation {
+    Add,
+    Update,
+    Move,
+    MoveUpdate,
+    Delete,
+    Nop,
+}
+
 pub mod params {
     use std::collections::HashMap;
 
@@ -239,9 +249,24 @@ mod responses {
 
     use crate::anki_connect::{card::CardId, note::NoteId};
 
+    use super::NoteOperation;
+
+    #[derive(Debug)]
+    pub struct NoteInfo {
+        pub markdown_id: String,
+        pub operation: NoteOperation,
+        note_id: NoteId,
+        profile: String,
+        model_name: String,
+        tags: Vec<String>,
+        fields: Vec<(String, String)>,
+        mtime: u64,
+        pub cards: Vec<CardId>,
+    }
+
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct NoteInfo {
+    struct NoteInfoHelper {
         note_id: NoteId,
         profile: String,
         model_name: String,
@@ -269,7 +294,6 @@ mod responses {
     fn deserialize_note_field<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Vec<(String, String)>, D::Error> {
-        // value: HashMap<String, NoteFieldResponse>
         let value: HashMap<String, NoteFieldResponse> = Deserialize::deserialize(deserializer)?;
 
         let mut data = value
@@ -285,5 +309,33 @@ mod responses {
             .into_par_iter()
             .map(|(_, name, value)| (name, value))
             .collect())
+    }
+
+    impl<'de> Deserialize<'de> for NoteInfo {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            let helper = NoteInfoHelper::deserialize(deserializer)?;
+
+            let markdown_id = helper
+                .fields
+                .first()
+                .ok_or(serde::de::Error::custom("No MarkdownID field."))?
+                .1
+                .clone();
+
+            Ok(NoteInfo {
+                markdown_id,
+                operation: NoteOperation::Nop,
+                note_id: helper.note_id,
+                profile: helper.profile,
+                model_name: helper.model_name,
+                tags: helper.tags,
+                fields: helper.fields,
+                mtime: helper.mtime,
+                cards: helper.cards,
+            })
+        }
     }
 }

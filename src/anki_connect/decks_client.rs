@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use super::{
-    AnkiConnectClient, client::ClientBehavior, deck::DeckId, error::APIError, response::Response,
+    AnkiConnectClient, card::CardId, client::ClientBehavior, deck::DeckId, error::APIError,
+    response::Response,
 };
 
 use rayon::prelude::*;
@@ -30,6 +31,16 @@ impl DecksClient<'_> {
             Some(id) => Ok(id.to_owned()),
             None => Err(APIError::DeckNotFound),
         }
+    }
+
+    /// Accepts an array of card IDs and returns an object with each deck name as a key, and its value an array of the given cards which belong to it.
+    pub fn get_decks(
+        &self,
+        cards: &Vec<&CardId>,
+    ) -> Result<HashMap<String, Vec<CardId>>, APIError> {
+        self.0
+            .request("getDecks", Some(params::GetDecks::new(cards)))
+            .map(|result| result.result.unwrap())
     }
 
     /// Create a new empty deck. Will not overwrite a deck that exists with the same name.
@@ -71,10 +82,18 @@ pub mod params {
     use derive_new::new;
     use serde::Serialize;
 
+    use crate::anki_connect::card::CardId;
+
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
     pub struct CreateDeck<'a> {
         deck: &'a str,
+    }
+
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct GetDecks<'a> {
+        cards: &'a Vec<&'a CardId>,
     }
 
     #[derive(Debug, Serialize, new)]

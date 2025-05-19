@@ -1,6 +1,10 @@
+use crate::anki_connect::card::CardId;
+use crate::anki_connect::deck::DeckId;
 use crate::anki_connect::{
     AnkiConnectClient, ClientBehavior, error::APIError, model::Model, note::NoteId,
+    notes_client::NoteOperation,
 };
+use crate::callout::Callout;
 use crate::cli::SyncArgs;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
@@ -15,6 +19,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::thread;
 use tracing::{debug, error, info, warn};
+
+use rayon::prelude::*;
 
 use crate::error::M2AnkiError;
 use crate::progress::{LOOKING_GLASS, SPARKLE, print_step};
@@ -182,8 +188,67 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     if args.delete_existing {
         let _ = client.decks().delete(&parent_deck);
     } else if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
-        let cards_in_deck = client.notes().get_notes_by_deck_name(&parent_deck)?;
-        dbg!(&cards_in_deck);
+        let mut notes_in_deck = client.notes().get_notes_by_deck_name(&parent_deck)?;
+        let deck_names_and_ids: HashMap<String, DeckId> = client
+            .decks()
+            .deck_names_and_ids()?
+            .into_par_iter()
+            .filter(|(name, id)| name.starts_with(&parent_deck))
+            .collect();
+        let all_cards: Vec<&CardId> = notes_in_deck
+            .par_iter()
+            .map(|note| &note.cards)
+            .flatten()
+            .collect();
+        let anki_decks = client.decks().get_decks(&all_cards)?;
+        let card_ids_to_deck: HashMap<&CardId, &str> = anki_decks
+            .par_iter()
+            .map(|(name, cards)| cards.par_iter().map(|card| (card, name.as_str())))
+            .flatten()
+            .collect();
+
+        let card_to_note: HashMap<&CardId, &String> = notes_in_deck
+            .par_iter()
+            .map(|note| (note.cards.first().unwrap(), &note.markdown_id))
+            .collect();
+
+        let note_to_deck: HashMap<&str, &str> = anki_decks
+            .par_iter()
+            .map(|(name, cards)| {
+                (
+                    card_to_note.get(cards.first().unwrap()).unwrap().as_str(),
+                    name.as_str(),
+                )
+            })
+            .collect();
+        dbg!(&note_to_deck);
+        // dbg!(&anki_decks);
+        // dbg!(&deck_names_and_ids);
+        // dbg!(&cards_in_deck);
+        // Prepare hashmap for faster card lookup
+        let callouts_map: HashMap<&String, &Callout> = decks
+            .par_iter()
+            .flat_map(|deck| {
+                deck.callouts
+                    .par_iter()
+                    .map(|callout| (&callout.markdown_id, callout))
+            })
+            .collect();
+
+        notes_in_deck.par_iter_mut().for_each(|note| {
+            if !callouts_map.contains_key(&note.markdown_id) {
+                note.operation = NoteOperation::Add;
+            }
+            // else if
+        });
+
+        dbg!(&notes_in_deck);
+
+        // TODO: identify how notes have changed:
+        //      - new note -> note should be added
+        //      - updated note -> note should be updated
+        //      - note exists, but in different file -> update deck
+        //      - note doesn't exist anymore -> delete note
     }
 
     // Prepare progress bars

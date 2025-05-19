@@ -23,6 +23,8 @@ allow_warnings = true
 command = [
     "cargo",
     "run",
+    "--features",
+    "ureq_blocking",
     "--",
     "-v",
     # "-v",

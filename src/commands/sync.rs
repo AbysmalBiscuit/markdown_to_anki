@@ -258,12 +258,6 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .flatten()
             .collect();
 
-        let anki_all_card_ids: Vec<&CardId> = anki_notes_in_deck
-            .par_iter()
-            .map(|note| &note.cards)
-            .flatten()
-            .collect();
-
         markdown_id_to_anki_note = anki_notes_in_deck
             .par_iter()
             .map(|note| (&note.markdown_id, note))
@@ -274,7 +268,14 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .map(|note| (&note.markdown_id, &note.note_id))
             .collect();
 
-        let anki_decks = client.decks().get_decks(&anki_all_card_ids)?;
+        let anki_all_card_ids: Vec<&CardId> = anki_notes_in_deck
+            .par_iter()
+            .map(|note| &note.cards)
+            .flatten()
+            .collect();
+
+        let anki_decks: HashMap<String, Vec<CardId>> =
+            client.decks().get_decks(&anki_all_card_ids)?;
 
         let anki_card_ids_to_deck: HashMap<&CardId, &str> = anki_decks
             .par_iter()
@@ -348,12 +349,6 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                 })
                 .collect::<Vec<&NoteId>>()
         };
-
-        // TODO: identify how notes have changed:
-        //      - new note -> note should be added
-        //      - updated note -> note should be updated
-        //      - note exists, but in different file -> update deck
-        //      - note doesn't exist anymore -> delete note
     }
 
     // Prepare progress bars
@@ -510,6 +505,30 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         client.notes().delete_notes(&to_delete_anki_cards);
         sync_stats.num_deleted += to_delete_anki_cards.len() as u64;
     }
+
+    // TODO: find a way to delete empty decks
+
+    // Delete empty decks
+    // if sync_stats.num_moved > 0 || sync_stats.num_deleted > 0 {
+    //     let anki_notes_in_deck = client.notes().get_notes_by_deck_name(&parent_deck)?;
+    //     let all_card_ids = anki_notes_in_deck
+    //         .par_iter()
+    //         .flat_map(|note| &note.cards)
+    //         .collect();
+    //     let anki_decks: HashMap<String, Vec<CardId>> = client.decks().get_decks(&all_card_ids)?;
+    //     let empty_decks: Vec<String> = anki_decks
+    //         .into_par_iter()
+    //         .filter_map(
+    //             |(name, cards)| {
+    //                 if cards.is_empty() { Some(name) } else { None }
+    //             },
+    //         )
+    //         .collect();
+    //     dbg!(&empty_decks);
+    //     client
+    //         .decks()
+    //         .delete_decks(empty_decks.iter().map(|name| name.as_str()).collect());
+    // }
 
     // Report stats
     info!("\nSync Stats:\n{}", sync_stats);

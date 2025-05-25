@@ -173,4 +173,19 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
             None,
         )
     }
+
+    fn get_audio<'a>(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
+        // TODO: impletment this method
+        None
+    }
+
+    fn get_picture<'a>(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
+        // TODO: impletment this method
+        None
+    }
+
+    fn get_video<'a>(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
+        // TODO: impletment this method
+        None
+    }
 }

@@ -2,7 +2,6 @@ use crate::anki_connect::card::CardId;
 use crate::anki_connect::deck::DeckId;
 use crate::anki_connect::{
     AnkiConnectClient, ClientBehavior, error::APIError, model::Model, note::NoteId,
-    notes_client::NoteOperation,
 };
 use crate::callout::Callout;
 use crate::cli::SyncArgs;
@@ -10,6 +9,7 @@ use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
 use crate::model::InternalModelMethods;
 use crate::model::ModelType;
+use crate::note_operation::NoteOperation;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
@@ -52,6 +52,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     });
 
     let input_dir_clone = args.input_dir.clone();
+    let parent_deck_clone = parent_deck.clone();
     let tx_files = tx.clone();
     let markdown_files_hadle = thread::spawn(move || {
         let markdown_files = find_markdown_files(&input_dir_clone).unwrap_or_else(|_| Vec::new());
@@ -62,12 +63,18 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
         print_step(2, 10, Some("Extracting decks"), Some(LOOKING_GLASS));
 
-        let decks: Vec<Deck> = markdown_files
+        let mut decks: Vec<Deck> = markdown_files
             .par_iter()
             .map(Deck::try_from)
             .filter(Result::is_ok)
             .map(Result::unwrap)
             .filter(|deck| !deck.callouts.is_empty())
+            .map(|mut deck| {
+                deck.qualified_name = deck
+                    .get_qualified_name(Some(&input_dir_clone), Some(&parent_deck_clone))
+                    .unwrap_or_default();
+                deck
+            })
             .collect();
 
         let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
@@ -144,7 +151,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     }
 
     client_handle.join().map_err(|_| M2AnkiError::ThreadPanic)?;
-    let (decks, total_callouts, model_type, css) = markdown_files_hadle
+    let (mut decks, total_callouts, model_type, css) = markdown_files_hadle
         .join()
         .map_err(|_| M2AnkiError::ThreadPanic)?;
 
@@ -183,66 +190,145 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
     let mut failed_notes: Vec<(PathBuf, Vec<(String, ModelType)>)> = Vec::new();
     let mut num_added_total = 0usize;
+    let mut num_updated_total = 0usize;
 
-    // Delete the deck and re-create it for testing purposes
+    // Delete the deck
     if args.delete_existing {
         let _ = client.decks().delete(&parent_deck);
-    } else if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
-        let mut notes_in_deck = client.notes().get_notes_by_deck_name(&parent_deck)?;
-        let deck_names_and_ids: HashMap<String, DeckId> = client
+    }
+
+    // Get existing notes
+    let mut anki_notes_in_deck = if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
+        client.notes().get_notes_by_deck_name(&parent_deck)?
+    } else {
+        Vec::new()
+    };
+
+    let mut markdown_id_to_anki_note_id: HashMap<&String, &NoteId> = HashMap::new();
+    let mut to_delete_anki_cards: Vec<&NoteId> = vec![];
+    if !anki_notes_in_deck.is_empty() {
+        let anki_deck_names_and_ids: HashMap<String, DeckId> = client
             .decks()
             .deck_names_and_ids()?
             .into_par_iter()
             .filter(|(name, id)| name.starts_with(&parent_deck))
             .collect();
-        let all_cards: Vec<&CardId> = notes_in_deck
+        let anki_all_cards: Vec<&CardId> = anki_notes_in_deck
             .par_iter()
             .map(|note| &note.cards)
             .flatten()
             .collect();
-        let anki_decks = client.decks().get_decks(&all_cards)?;
-        let card_ids_to_deck: HashMap<&CardId, &str> = anki_decks
+        let anki_decks = client.decks().get_decks(&anki_all_cards)?;
+
+        // let anki_note_id_to_deck: HashMap<&NoteId, &str> = anki_decks
+        //     .par_iter()
+        //     .map(|(name, cards)| cards.par_iter().map(|card| (card, name.as_str())))
+        //     .flatten()
+        //     .collect();
+
+        let anki_card_ids_to_deck: HashMap<&CardId, &str> = anki_decks
             .par_iter()
             .map(|(name, cards)| cards.par_iter().map(|card| (card, name.as_str())))
             .flatten()
             .collect();
 
-        let card_to_note: HashMap<&CardId, &String> = notes_in_deck
+        let anki_card_id_to_markdown_id: HashMap<&CardId, &String> = anki_notes_in_deck
             .par_iter()
             .map(|note| (note.cards.first().unwrap(), &note.markdown_id))
             .collect();
 
-        let note_to_deck: HashMap<&str, &str> = anki_decks
+        markdown_id_to_anki_note_id = anki_notes_in_deck
             .par_iter()
-            .map(|(name, cards)| {
-                (
-                    card_to_note.get(cards.first().unwrap()).unwrap().as_str(),
-                    name.as_str(),
-                )
-            })
+            .map(|note| (&note.markdown_id, &note.note_id))
             .collect();
-        dbg!(&note_to_deck);
+
+        let markdown_id_to_anki_deck: Result<HashMap<&String, &str>, M2AnkiError> =
+            anki_notes_in_deck
+                .par_iter()
+                .map(|note| {
+                    let card_id = note.cards.first().ok_or(M2AnkiError::NoteHasNoCards)?;
+                    let deck = anki_card_ids_to_deck
+                        .get(card_id)
+                        .ok_or(M2AnkiError::DeckNameNotFound)?;
+                    Ok((&note.markdown_id, *deck))
+                })
+                .collect();
+        let markdown_id_to_anki_deck = markdown_id_to_anki_deck?;
+
+        // dbg!(&note_to_deck);
         // dbg!(&anki_decks);
         // dbg!(&deck_names_and_ids);
         // dbg!(&cards_in_deck);
         // Prepare hashmap for faster card lookup
-        let callouts_map: HashMap<&String, &Callout> = decks
-            .par_iter()
-            .flat_map(|deck| {
-                deck.callouts
-                    .par_iter()
-                    .map(|callout| (&callout.markdown_id, callout))
-            })
-            .collect();
+        // let callouts_map: HashMap<&String, &Callout> = decks
+        //     .par_iter()
+        //     .flat_map(|deck| {
+        //         deck.callouts
+        //             .par_iter()
+        //             .map(|callout| (&callout.markdown_id, callout))
+        //     })
+        //     .collect();
+        //
+        // anki_notes_in_deck.par_iter_mut().for_each(|note| {
+        //     if !callouts_map.contains_key(&note.markdown_id) {
+        //         note.operation = NoteOperation::Add;
+        //     }
+        //     // else if
+        // });
 
-        notes_in_deck.par_iter_mut().for_each(|note| {
-            if !callouts_map.contains_key(&note.markdown_id) {
-                note.operation = NoteOperation::Add;
-            }
-            // else if
+        dbg!(&markdown_id_to_anki_deck);
+
+        // Set operations for each Callout
+        decks.par_iter_mut().for_each(|deck| {
+            deck.callouts.par_iter_mut().try_for_each(|callout| {
+                // Callout is new
+                if !markdown_id_to_anki_note_id.contains_key(&callout.markdown_id) {
+                    callout.operation = NoteOperation::Add;
+                    Ok::<(), M2AnkiError>(())
+                } else {
+                    let anki_note_id = markdown_id_to_anki_note_id
+                        .get(&callout.markdown_id)
+                        .unwrap();
+
+                    if markdown_id_to_anki_deck
+                        .get(&callout.markdown_id)
+                        .ok_or(M2AnkiError::DeckNameNotFound)?
+                        .eq(&deck.qualified_name)
+                    {
+                        callout.operation = NoteOperation::Update;
+                    } else {
+                        callout.operation = NoteOperation::MoveUpdate;
+                    }
+                    Ok::<(), M2AnkiError>(())
+                }
+            });
         });
 
-        dbg!(&notes_in_deck);
+        if anki_all_cards.len() != total_callouts {
+            let callouts_map: HashMap<&String, &Callout> = decks
+                .par_iter()
+                .flat_map(|deck| {
+                    deck.callouts
+                        .par_iter()
+                        .map(|callout| (&callout.markdown_id, callout))
+                })
+                .collect();
+            to_delete_anki_cards = anki_notes_in_deck
+                .par_iter()
+                .filter_map(|note| {
+                    if !callouts_map.contains_key(&note.markdown_id) {
+                        Some(&note.note_id)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<&NoteId>>()
+        };
+
+        // dbg!(&decks);
+        // dbg!(&callouts_map);
+        // dbg!(&anki_notes_in_deck);
+        // dbg!(&anki_decks);
 
         // TODO: identify how notes have changed:
         //      - new note -> note should be added
@@ -250,6 +336,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         //      - note exists, but in different file -> update deck
         //      - note doesn't exist anymore -> delete note
     }
+    // return Ok(());
 
     // Prepare progress bars
     let m = MultiProgress::new();
@@ -280,10 +367,24 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let new_notes: Vec<ModelType> = deck
             .callouts
             .par_iter()
+            .filter(|callout| matches!(callout.operation, NoteOperation::Add))
             .map(|callout| model_type.from_callout(callout, header_lang.as_deref()))
             .collect();
 
-        let deck_name = deck.get_qualified_name(Some(input_dir), Some(&parent_deck))?;
+        let to_update_notes: Vec<ModelType> = deck
+            .callouts
+            .par_iter()
+            .filter(|callout| matches!(callout.operation, NoteOperation::Update))
+            .map(|callout| model_type.from_callout(callout, header_lang.as_deref()))
+            .collect();
+
+        let to_update_callouts: Vec<&Callout> = deck
+            .callouts
+            .par_iter()
+            .filter(|callout| matches!(callout.operation, NoteOperation::Update))
+            .collect();
+
+        let deck_name = deck.qualified_name;
         let _ = client.decks().find_or_create_deck(deck_name.as_str())?;
 
         // Add the notes to the deck
@@ -298,6 +399,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
         let mut note_id: NoteId = NoteId(0);
         let mut num_added = 0usize;
+        let mut num_updated = 0usize;
         let mut failed_in_deck: Vec<(String, ModelType)> =
             Vec::with_capacity(deck.callouts.len() / 2);
 
@@ -319,7 +421,27 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             global_pbar.inc(1);
             current_deck_pb.inc(1);
         }
+        for callout in to_update_callouts {
+            let note = model_type.from_callout(callout, header_lang.as_deref());
+            match client.notes().update_note_from_model_type(
+                markdown_id_to_anki_note_id
+                    .get(&callout.markdown_id)
+                    .ok_or(M2AnkiError::CardIdNotFound)?,
+                &note,
+                None,
+            ) {
+                Ok(status) => {
+                    num_updated += 1;
+                    debug!("Updated note with ID: {}", callout.markdown_id)
+                }
+                Err(err) => {
+                    failed_in_deck.push((err.to_string(), note));
+                    debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
+                }
+            }
+        }
         num_added_total += num_added;
+        num_updated_total += num_updated;
         if !failed_in_deck.is_empty() {
             failed_notes.push((deck.source_file, failed_in_deck));
         }
@@ -329,6 +451,13 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     let _ = m.clear();
 
     info!("Added {} notes.", num_added_total);
+
+    // Delete removed notes
+    if !to_delete_anki_cards.is_empty() {
+        client.notes().delete_notes(&to_delete_anki_cards);
+        info!("Deleted {} notes.", to_delete_anki_cards.len());
+    }
+
     if !failed_notes.is_empty() {
         warn!(
             "Failed in {} decks, with a total of {} failed notes.",

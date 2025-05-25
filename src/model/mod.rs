@@ -10,6 +10,7 @@ use basic::Basic;
 // use rule::Rule;
 // use word::Word;
 
+use derive_new::new;
 use enum_dispatch::enum_dispatch;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -38,4 +39,27 @@ pub trait InternalModelMethods: Debug + Default + Serialize {
     fn get_fields<'a>(&'a self) -> HashMap<&'a str, &'a str>;
     fn to_note(self, model: Model) -> Result<Note, APIError>;
     fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a>;
+    fn get_audio<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
+    fn get_video<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
+    fn get_picture<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
+}
+
+#[derive(Debug, Serialize, new)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaFile<'a> {
+    filename: &'a str,
+    /// The skipHash field can be optionally provided to skip the inclusion of files with an MD5 hash that matches the provided value. This is useful for avoiding the saving of error pages and stub files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    skip_hash: Option<&'a str>,
+    /// The fields member is a list of fields that should play audio or video, or show a picture when the card is displayed in Anki.
+    fields: &'a Vec<&'a str>,
+    /// Base64 encoded data that will be saved as a media file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<&'a str>,
+    /// Relative or absolute path to the file that should be uploaded.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<&'a str>,
+    /// URL for downloading the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    url: Option<&'a str>,
 }

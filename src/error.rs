@@ -21,6 +21,10 @@ pub enum M2AnkiError {
     ModelParseError(strum::ParseError),
     ProgressBarError,
     SerdeJsonError(SerdeJsonError),
+    CardIdNotFound,
+    NoteIdNotFound,
+    NoteHasNoCards,
+    DeckNameNotFound,
 }
 
 impl From<std::io::Error> for M2AnkiError {

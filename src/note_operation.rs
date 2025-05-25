@@ -3,7 +3,6 @@ pub enum NoteOperation {
     Add,
     Update,
     Move,
-    MoveUpdate,
     Delete,
     Nop,
 }

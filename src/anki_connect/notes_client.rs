@@ -257,7 +257,7 @@ pub mod params {
     }
 }
 
-mod responses {
+pub mod responses {
     use std::collections::HashMap;
 
     use rayon::prelude::*;

@@ -24,7 +24,8 @@ pub enum M2AnkiError {
     CardIdNotFound,
     NoteIdNotFound,
     NoteHasNoCards,
-    DeckNameNotFound,
+    DeckNameNotFound(String),
+    AnkiNoteNotFound(String),
 }
 
 impl From<std::io::Error> for M2AnkiError {

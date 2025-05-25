@@ -12,6 +12,8 @@ use std::fmt::Display;
 use std::fs::read_to_string;
 use std::path::Path;
 
+use crate::note_operation::NoteOperation;
+
 #[derive(Debug)]
 pub struct ExtractCalloutsResult {
     pub callouts: Vec<Callout>,
@@ -30,6 +32,7 @@ impl From<(Vec<Callout>, Vec<(String, CalloutError)>)> for ExtractCalloutsResult
 #[derive(Debug, Default)]
 pub struct Callout {
     pub markdown_id: String,
+    pub operation: NoteOperation,
     pub callout_type: CalloutType,
     pub header: String,
     pub content: Vec<CalloutContent>,
@@ -46,6 +49,7 @@ impl Callout {
     ) -> Callout {
         Callout {
             markdown_id,
+            operation: NoteOperation::Nop,
             callout_type,
             header,
             content,

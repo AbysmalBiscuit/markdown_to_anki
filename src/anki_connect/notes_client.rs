@@ -80,9 +80,27 @@ impl NotesClient<'_> {
             .map(|_| true)
     }
 
-    pub fn update_note(&self, id: NoteId, note: &ModelType) -> Result<bool, APIError> {
-        self.update_note_fields(params::UpdateNoteFields::new(
-            params::UpdateNoteFieldsNote::new(id, note.get_fields(), None, None, None),
+    pub fn update_note(&self, params: params::UpdateNoteFields) -> Result<bool, APIError> {
+        self.0
+            .request::<(), _>("updateNote", Some(params))
+            .map(|_| true)
+    }
+
+    pub fn update_note_from_model_type(
+        &self,
+        id: &NoteId,
+        note: &ModelType,
+        tags: Option<&Vec<&str>>,
+    ) -> Result<bool, APIError> {
+        self.update_note(params::UpdateNoteFields::new(
+            params::UpdateNoteFieldsNote::new(
+                id,
+                &note.get_fields(),
+                note.get_audio(),
+                note.get_video(),
+                note.get_picture(),
+                tags,
+            ),
         ))
     }
 
@@ -110,6 +128,13 @@ impl NotesClient<'_> {
         self.notes_info_by_query(&format!("deck:{}", deck_name))
     }
 
+    /// Deletes notes with the given ids. If a note has several cards associated with it, all associated cards will be deleted.
+    pub fn delete_notes(&self, notes: &Vec<&NoteId>) -> Result<bool, APIError> {
+        self.0
+            .request::<(), _>("deleteNotes", Some(params::DeleteNotes::new(notes)))
+            .map(|_| true)
+    }
+
     #[inline]
     pub fn notes_to_add_notes<'a>(
         notes: &'a Vec<ModelType>,
@@ -123,30 +148,13 @@ impl NotesClient<'_> {
     }
 }
 
-#[derive(Debug)]
-pub enum NoteOperation {
-    Add,
-    Update,
-    Move,
-    MoveUpdate,
-    Delete,
-    Nop,
-}
-
 pub mod params {
     use std::collections::HashMap;
 
     use derive_new::new;
     use serde::Serialize;
 
-    use crate::anki_connect::note::NoteId;
-
-    #[derive(Debug, Serialize, new)]
-    #[serde(rename_all = "camelCase")]
-    pub struct DeleteDecks {
-        decks: Vec<String>,
-        cards_too: bool,
-    }
+    use crate::{anki_connect::note::NoteId, model::MediaFile};
 
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
@@ -225,17 +233,27 @@ pub mod params {
     pub struct UpdateNoteFields<'a> {
         note: UpdateNoteFieldsNote<'a>,
     }
+
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
     pub struct UpdateNoteFieldsNote<'a> {
-        id: NoteId,
-        fields: HashMap<&'a str, &'a str>,
-        #[serde(skip_serializing)]
-        audio: Option<()>,
-        #[serde(skip_serializing)]
-        video: Option<()>,
-        #[serde(skip_serializing)]
-        picture: Option<()>,
+        id: &'a NoteId,
+        fields: &'a HashMap<&'a str, &'a str>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        audio: Option<&'a Vec<MediaFile<'a>>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        video: Option<&'a Vec<MediaFile<'a>>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        picture: Option<&'a Vec<MediaFile<'a>>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tags: Option<&'a Vec<&'a str>>,
+    }
+
+    // deletNotes
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct DeleteNotes<'a> {
+        notes: &'a Vec<&'a NoteId>,
     }
 }
 
@@ -248,14 +266,13 @@ mod responses {
     use serde_json::Value;
 
     use crate::anki_connect::{card::CardId, note::NoteId};
-
-    use super::NoteOperation;
+    use crate::note_operation::NoteOperation;
 
     #[derive(Debug)]
     pub struct NoteInfo {
         pub markdown_id: String,
         pub operation: NoteOperation,
-        note_id: NoteId,
+        pub note_id: NoteId,
         profile: String,
         model_name: String,
         tags: Vec<String>,

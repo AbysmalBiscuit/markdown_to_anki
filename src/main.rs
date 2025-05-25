@@ -10,6 +10,7 @@ mod error;
 mod find_markdown_files;
 mod macros;
 mod model;
+mod note_operation;
 mod progress;
 
 use crate::callout::Callout;

@@ -19,6 +19,7 @@ impl Error for DeckError {}
 #[derive(Debug)]
 pub struct Deck {
     pub source_file: PathBuf,
+    pub qualified_name: String,
     pub callouts: Vec<Callout>,
     pub failed: Vec<(String, CalloutError)>,
 }
@@ -68,6 +69,7 @@ impl TryFrom<&PathBuf> for Deck {
         }
         Ok(Deck {
             source_file: value.clone(),
+            qualified_name: "".to_string(),
             callouts: callouts_results.callouts,
             failed: callouts_results.failed,
         })

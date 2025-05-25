@@ -240,6 +240,9 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let _ = client.decks().delete(&parent_deck);
     }
 
+    // dbg!(&decks);
+    // return Ok(());
+
     // Get existing notes
     let mut anki_notes_in_deck = if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
         client.notes().get_notes_by_deck_name(&parent_deck)?

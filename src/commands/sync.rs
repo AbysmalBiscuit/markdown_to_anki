@@ -48,7 +48,7 @@ impl Display for SyncStats {
         .iter()
         .max()
         .unwrap();
-        let width = (max_value + 9).to_string().len();
+        let width = (max_value + 10).to_string().len();
         write!(
             f,
             "{:<8}{:>width$}\n{:<8}{:>width$}\n{:<8}{:>width$}\n{:<8}{:>width$}",
@@ -422,11 +422,11 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                 Ok(id) => {
                     note_id = id;
                     num_added += 1;
-                    debug!("Added note with ID: {}", note_id.0)
+                    // debug!("Added note with ID: {}", note_id.0)
                 }
                 Err(err) => {
                     failed_in_deck.push((err.to_string(), note));
-                    debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
+                    // debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
                 }
             };
             global_pbar.inc(1);
@@ -455,13 +455,15 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             ) {
                 Ok(status) => {
                     num_updated += 1;
-                    debug!("Updated note with ID: {}", &callout.markdown_id)
+                    // debug!("Updated note with ID: {}", &callout.markdown_id)
                 }
                 Err(err) => {
                     failed_in_deck.push((err.to_string(), note));
-                    debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
+                    // debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
                 }
             }
+            global_pbar.inc(1);
+            current_deck_pb.inc(1);
         }
 
         // Move
@@ -484,9 +486,11 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                         err.to_string(),
                         model_type.from_callout(callout, header_lang.as_deref()),
                     ));
-                    debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
+                    // debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
                 }
             };
+            global_pbar.inc(1);
+            current_deck_pb.inc(1);
         }
 
         // Update overall stats

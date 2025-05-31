@@ -10,7 +10,7 @@ pub(crate) mod models_client;
 pub(crate) mod note;
 pub(crate) mod notes_client;
 mod params;
-mod response;
+pub(crate) mod response;
 mod util;
 
 pub use anki_connect_client::AnkiConnectClient;

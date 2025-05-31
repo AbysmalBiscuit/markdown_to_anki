@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::fmt::Display;
 use std::io::Error as IOError;
 
 use crate::anki_connect::error::APIError;
@@ -21,11 +22,17 @@ pub enum M2AnkiError {
     ModelParseError(strum::ParseError),
     ProgressBarError,
     SerdeJsonError(SerdeJsonError),
-    CardIdNotFound,
+    CardIdNotFound(String),
     NoteIdNotFound,
     NoteHasNoCards,
     DeckNameNotFound(String),
     AnkiNoteNotFound(String),
+}
+
+impl Display for M2AnkiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self,)
+    }
 }
 
 impl From<std::io::Error> for M2AnkiError {

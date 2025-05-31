@@ -70,6 +70,20 @@ impl NotesClient<'_> {
             .map(|result| result.result.unwrap())
     }
 
+    pub fn add_notes_convenience(
+        &self,
+        deck_name: &str,
+        model_name: &str,
+        notes: Vec<&ModelType>,
+    ) -> Result<Vec<NoteId>, APIError> {
+        self.add_notes(params::AddNotes::new(
+            notes
+                .par_iter()
+                .map(|note| note.to_add_note(&deck_name, &model_name))
+                .collect(),
+        ))
+    }
+
     /// Modify the fields of an existing note. You can also include audio, video, or picture files
     /// which will be added to the note with an optional audio, video, or picture property. Please
     /// see the documentation for addNote for an explanation of objects in the audio, video, or
@@ -95,7 +109,7 @@ impl NotesClient<'_> {
         self.update_note(params::UpdateNoteFields::new(
             params::UpdateNoteFieldsNote::new(
                 id,
-                &note.get_fields(),
+                note.get_fields(),
                 note.get_audio(),
                 note.get_video(),
                 note.get_picture(),
@@ -231,14 +245,14 @@ pub mod params {
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
     pub struct UpdateNoteFields<'a> {
-        note: UpdateNoteFieldsNote<'a>,
+        pub note: UpdateNoteFieldsNote<'a>,
     }
 
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
     pub struct UpdateNoteFieldsNote<'a> {
         id: &'a NoteId,
-        fields: &'a HashMap<&'a str, &'a str>,
+        pub fields: HashMap<&'a str, &'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
         audio: Option<&'a Vec<MediaFile<'a>>>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -249,6 +263,26 @@ pub mod params {
         tags: Option<&'a Vec<&'a str>>,
     }
 
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct UpdateNoteFields2<'a> {
+        note: UpdateNoteFieldsNote2<'a>,
+    }
+
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct UpdateNoteFieldsNote2<'a> {
+        id: &'a NoteId,
+        fields: HashMap<String, String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        audio: Option<&'a Vec<MediaFile<'a>>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        video: Option<Vec<MediaFile<'a>>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        picture: Option<Vec<MediaFile<'a>>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tags: Option<Vec<&'a str>>,
+    }
     // deletNotes
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]

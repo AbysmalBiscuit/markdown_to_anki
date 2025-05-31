@@ -3,8 +3,11 @@ mod basic;
 // mod word;
 
 use crate::anki_connect::models_client::params::CreateModel;
+use crate::anki_connect::note::NoteId;
+use crate::anki_connect::notes_client::params as notes_params;
 use crate::anki_connect::{APIError, model::Model, note::Note, notes_client::params::AddNoteNote};
 use crate::callout::Callout;
+use crate::note_operation::NoteOperation;
 
 use basic::Basic;
 // use rule::Rule;
@@ -17,7 +20,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use strum::{Display, EnumString};
 
-#[derive(Debug, Display, EnumString, Serialize)]
+#[derive(Debug, Display, Clone, EnumString, Serialize)]
 #[strum(serialize_all = "PascalCase")]
 #[enum_dispatch(InternalModelMethods)]
 pub enum ModelType {
@@ -33,18 +36,21 @@ impl Default for ModelType {
 }
 
 #[enum_dispatch]
-pub trait InternalModelMethods: Debug + Default + Serialize {
+pub trait InternalModelMethods: Debug + Default {
     fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self;
     fn to_create_model<'a>(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a>;
     fn get_fields<'a>(&'a self) -> HashMap<&'a str, &'a str>;
     fn to_note(self, model: Model) -> Result<Note, APIError>;
     fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a>;
+    fn to_update_note<'a>(&'a self, note_id: &'a NoteId) -> notes_params::UpdateNoteFields<'a>;
+    fn get_operation<'a>(&'a self) -> NoteOperation;
+    fn get_markdown_id<'a>(&'a self) -> &'a String;
     fn get_audio<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
     fn get_video<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
     fn get_picture<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
 }
 
-#[derive(Debug, Serialize, new)]
+#[derive(Debug, Serialize, Clone, new)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaFile<'a> {
     filename: &'a str,

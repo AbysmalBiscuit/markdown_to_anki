@@ -1,6 +1,12 @@
+use crate::anki_connect;
+use crate::anki_connect::anki_connect_client::params as client_params;
+use crate::anki_connect::anki_connect_client::response::BasicResponse;
 use crate::anki_connect::card::CardId;
 use crate::anki_connect::deck::DeckId;
+use crate::anki_connect::decks_client::params::ChangeDeck;
+use crate::anki_connect::notes_client::params::{self as notes_params, UpdateNoteFields};
 use crate::anki_connect::notes_client::responses::NoteInfo;
+use crate::anki_connect::response::Response;
 use crate::anki_connect::{
     AnkiConnectClient, ClientBehavior, error::APIError, model::Model, note::NoteId,
 };
@@ -8,8 +14,8 @@ use crate::callout::Callout;
 use crate::cli::SyncArgs;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
-use crate::model::InternalModelMethods;
 use crate::model::ModelType;
+use crate::model::{InternalModelMethods, MediaFile};
 use crate::note_operation::NoteOperation;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::iter::{Either, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -18,6 +24,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs::{File, read_to_string};
 use std::io::Write;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::thread;
@@ -405,100 +412,171 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
         let mut note_id: NoteId = NoteId(0);
         let mut num_added = 0;
-        let mut num_updated = 0;
         let mut failed_in_deck: Vec<(String, ModelType)> =
             Vec::with_capacity(deck.callouts.len() / 2);
 
-        // Add
-        let to_add_notes: Vec<ModelType> = deck
+        // Prepare all notes
+        let notes: Vec<ModelType> = deck
             .callouts
             .par_iter()
-            .filter(|callout| matches!(callout.operation, NoteOperation::Add))
             .map(|callout| model_type.from_callout(callout, header_lang.as_deref()))
             .collect();
 
-        for note in to_add_notes {
-            match client
-                .notes()
-                .add_note(note.to_add_note(&deck_name, &model_name))
-            {
-                Ok(id) => {
-                    note_id = id;
-                    num_added += 1;
-                    // debug!("Added note with ID: {}", note_id.0)
-                }
-                Err(err) => {
-                    failed_in_deck.push((err.to_string(), note));
-                    // debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
-                }
-            };
-            global_pbar.inc(1);
-            current_deck_pb.inc(1);
-        }
+        // Add
+        let to_add_notes: Vec<&ModelType> = notes
+            .par_iter()
+            .filter(|note| matches!(note.get_operation(), NoteOperation::Add))
+            .collect();
+
+        client
+            .notes()
+            .add_notes_convenience(&deck_name, &model_name, to_add_notes);
+
+        // for note in to_add_notes {
+        //     match client
+        //         .notes()
+        //         .add_note(note.to_add_note(&deck_name, &model_name))
+        //     {
+        //         Ok(id) => {
+        //             note_id = id;
+        //             num_added += 1;
+        //             // debug!("Added note with ID: {}", note_id.0)
+        //         }
+        //         Err(err) => {
+        //             failed_in_deck.push((err.to_string(), note.clone()));
+        //             // debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
+        //         }
+        //     };
+        //     global_pbar.inc(1);
+        //     current_deck_pb.inc(1);
+        // }
 
         // Update (all notes that are Move, need to be updated first)
-        let to_update_callouts: Vec<&Callout> = deck
-            .callouts
+        let to_update_notes: Vec<&ModelType> = notes
             .par_iter()
-            .filter(|callout| {
+            .filter(|note| {
                 matches!(
-                    callout.operation,
+                    note.get_operation(),
                     NoteOperation::Update | NoteOperation::Move
                 )
             })
             .collect();
-        for callout in to_update_callouts {
-            let note = model_type.from_callout(callout, header_lang.as_deref());
-            match client.notes().update_note_from_model_type(
-                markdown_id_to_anki_note_id
-                    .get(&callout.markdown_id)
-                    .ok_or(M2AnkiError::CardIdNotFound)?,
-                &note,
-                None,
-            ) {
-                Ok(status) => {
-                    num_updated += 1;
-                    // debug!("Updated note with ID: {}", &callout.markdown_id)
+
+        let (to_update_params, to_update_errors): (
+            Vec<Result<notes_params::UpdateNoteFields, M2AnkiError>>,
+            Vec<Result<notes_params::UpdateNoteFields, M2AnkiError>>,
+        ) = to_update_notes
+            .par_iter()
+            .map(|note| {
+                match markdown_id_to_anki_note_id
+                    .get(note.get_markdown_id())
+                    .copied()
+                {
+                    Some(note_id) => Ok(note.to_update_note(note_id)),
+                    None => Err(M2AnkiError::CardIdNotFound(
+                        note.get_markdown_id().to_string(),
+                    )),
                 }
-                Err(err) => {
-                    failed_in_deck.push((err.to_string(), note));
-                    // debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
-                }
+            })
+            .partition(Result::is_ok);
+        let to_update_params: Vec<notes_params::UpdateNoteFields> = to_update_params
+            .into_par_iter()
+            .map(|action| action.unwrap())
+            .collect();
+        let to_update_actions: Vec<client_params::Action<notes_params::UpdateNoteFields<'_>>> =
+            to_update_params
+                .par_iter()
+                .map(|params| client_params::Action::new("updateNote", 6, params))
+                .collect();
+        let to_update_actions_refs = to_update_actions.par_iter().collect();
+
+        match client.multi::<UpdateNoteFields<'_>, BasicResponse>(to_update_actions_refs) {
+            Ok(result) => {
+                // for (idx, res) in result.iter().enumerate() {
+                //     if !res.error.is_some() {
+                //         let markdown_id = to_update_params[idx]
+                //             .note
+                //             .fields
+                //             .get("MarkdownID")
+                //             .unwrap()
+                //             .clone();
+                //         failed_in_deck.push((
+                //             "Failed to update".to_string(),
+                //             to_update_notes
+                //                 .par_iter()
+                //                 .map(|note| *note)
+                //                 .find_any(|note| note.get_markdown_id() == markdown_id)
+                //                 .unwrap()
+                //                 .clone(),
+                //         ));
+                //     }
+                // }
             }
-            global_pbar.inc(1);
-            current_deck_pb.inc(1);
-        }
+            Err(err) => match err {
+                APIError::UnknownError(ref msg) => {
+                    error!(
+                        "{}({}) error for all notes in {}",
+                        err,
+                        msg,
+                        deck.source_file.to_str().unwrap()
+                    )
+                }
+                _ => error!(
+                    "{} error for all notes in {}",
+                    err,
+                    deck.source_file.to_str().unwrap()
+                ),
+            },
+        };
+
+        to_update_errors
+            .iter()
+            // .filter(|err| Result::is_err(err))
+            .for_each(|item| match item {
+                Ok(_) => (),
+                Err(err) => match &err {
+                    M2AnkiError::CardIdNotFound(markdown_id) => failed_in_deck.push((
+                        err.to_string(),
+                        to_update_notes
+                            .par_iter()
+                            .map(|note| *note)
+                            .find_any(|note| note.get_markdown_id() == markdown_id)
+                            .unwrap()
+                            .clone(),
+                    )),
+                    _ => (),
+                },
+            });
+
+        global_pbar.inc(to_update_params.len() as u64);
+        current_deck_pb.inc(to_update_params.len() as u64);
 
         // Move
-        let to_move_update_callouts: Vec<&Callout> = deck
-            .callouts
+        let to_move_update_callouts: Vec<&ModelType> = notes
             .par_iter()
-            .filter(|callout| matches!(callout.operation, NoteOperation::Move))
+            .filter(|callout| matches!(callout.get_operation(), NoteOperation::Move))
             .collect();
-        for callout in to_move_update_callouts {
-            let note = markdown_id_to_anki_note
-                .get(&callout.markdown_id)
-                .ok_or(M2AnkiError::AnkiNoteNotFound(callout.markdown_id.clone()))?;
-            let cards: &Vec<&CardId> = &note.cards.iter().collect();
-            match client.decks().change_deck(cards, &deck_name) {
-                Ok(status) => {
-                    sync_stats.num_moved += 1;
-                }
-                Err(err) => {
-                    failed_in_deck.push((
-                        err.to_string(),
-                        model_type.from_callout(callout, header_lang.as_deref()),
-                    ));
-                    // debug!("Error: {:?}; for note: {:?}", err, &failed_in_deck.last());
-                }
-            };
-            global_pbar.inc(1);
-            current_deck_pb.inc(1);
-        }
+        let change_deck_params: Vec<ChangeDeck> = to_move_update_callouts
+            .par_iter()
+            .map(|note| {
+                let anki_note = markdown_id_to_anki_note
+                    .get(&note.get_markdown_id())
+                    .unwrap();
+                let cards: Vec<&CardId> = anki_note.cards.iter().collect();
+                ChangeDeck::new(cards, &deck_name)
+            })
+            .collect();
+        let move_actions: Vec<client_params::Action<ChangeDeck>> = change_deck_params
+            .par_iter()
+            .map(|params| client_params::Action::new("changeDeck", 6, params))
+            .collect();
+        let move_actions_refs = move_actions.par_iter().collect();
+        client.multi::<_, BasicResponse>(move_actions_refs);
 
         // Update overall stats
         sync_stats.num_added += num_added;
-        sync_stats.num_updated += num_updated;
+        sync_stats.num_updated += to_update_params.len() as u64;
+        sync_stats.num_moved += move_actions.len() as u64;
         if !failed_in_deck.is_empty() {
             failed_notes.push((deck.source_file, failed_in_deck));
         }

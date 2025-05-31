@@ -1,9 +1,15 @@
-use crate::anki_connect::{
-    error::APIError,
-    model::Model,
-    models_client::params::CreateModel,
-    note::{Note, NoteId},
-    notes_client::params::{AddNoteNote, AddNoteOptions, DuplicateScopeOptions, UpdateNoteFields},
+use crate::{
+    anki_connect::{
+        error::APIError,
+        model::Model,
+        models_client::params::CreateModel,
+        note::{Note, NoteId},
+        notes_client::params::{
+            self, AddNoteNote, AddNoteOptions, DuplicateScopeOptions, UpdateNoteFields,
+            UpdateNoteFieldsNote,
+        },
+    },
+    note_operation::NoteOperation,
 };
 use std::{
     borrow::Cow,
@@ -17,8 +23,9 @@ use crate::callout::Callout;
 
 use super::InternalModelMethods;
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct Basic {
+    pub operation: NoteOperation,
     pub markdown_id: String,
     pub front: String,
     pub back: String,
@@ -27,6 +34,7 @@ pub struct Basic {
 impl InternalModelMethods for Basic {
     fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self {
         Basic {
+            operation: callout.operation,
             markdown_id: callout.markdown_id.to_owned(),
             front: callout.header.clone(),
             back: callout.content_to_html(header_lang),
@@ -144,6 +152,25 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         // Ok(InternalNote::new(model, field_values, tags))
     }
 
+    fn to_update_note<'a>(&'a self, note_id: &'a NoteId) -> UpdateNoteFields<'a> {
+        let mut field_values: HashMap<&'a str, &'a str> = HashMap::with_capacity(3);
+        field_values.insert("MarkdownID", self.markdown_id.as_str());
+        field_values.insert("Front", self.front.as_str());
+        field_values.insert("Back", self.back.as_str());
+        UpdateNoteFields::new(UpdateNoteFieldsNote::new(
+            note_id,
+            field_values,
+            self.get_audio(),
+            // None,
+            // video,
+            None,
+            // picture,
+            None,
+            // tags
+            None,
+        ))
+    }
+
     fn get_fields<'a>(&'a self) -> HashMap<&'a str, &'a str> {
         let mut field_values: HashMap<&'a str, &'a str> = HashMap::with_capacity(3);
         field_values.insert("MarkdownID", self.markdown_id.as_str());
@@ -172,6 +199,14 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
             None,
             None,
         )
+    }
+
+    fn get_operation<'a>(&'a self) -> NoteOperation {
+        self.operation
+    }
+
+    fn get_markdown_id<'a>(&'a self) -> &'a String {
+        &self.markdown_id
     }
 
     fn get_audio<'a>(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {

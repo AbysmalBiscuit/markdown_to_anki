@@ -1,6 +1,7 @@
 use enum_dispatch::enum_dispatch;
+use params::Action;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 use strum::{Display, EnumString};
 
 use super::{
@@ -63,28 +64,69 @@ impl AnkiConnectClient {
     }
 
     pub fn test_connection(&self) -> Result<bool, APIError> {
-        match self.request_with_timeout::<TestConnectionParams, TestConnectionParams>(
-            "apiReflect",
-            Some(TestConnectionParams {
-                scopes: vec!["actions".into()],
-                actions: vec!["apiReflect".into()],
-            }),
-            Some(1),
-        ) {
+        match self
+            .request_with_timeout::<params::TestConnectionParams, params::TestConnectionParams>(
+                "apiReflect",
+                Some(params::TestConnectionParams::new(
+                    vec!["actions".into()],
+                    vec!["apiReflect".into()],
+                )),
+                Some(1),
+            ) {
             Ok(_) => Ok(true),
             Err(err) => match err {
                 APIError::UreqError(_) => Ok(false),
-                _ => {
-                    dbg!(&err);
-                    Err(APIError::FailedConnection(err.to_string()))
-                }
+                _ => Err(APIError::FailedConnection(err.to_string())),
             },
         }
     }
+
+    pub fn multi<P, R>(&self, actions: Vec<&params::Action<P>>) -> Result<Vec<R>, APIError>
+    where
+        P: Serialize + std::fmt::Debug,
+        R: DeserializeOwned + std::fmt::Debug,
+    {
+        self.request::<Vec<R>, _>("multi", Some(params::Multi::new(actions)))
+            .map(|response| response.result.unwrap())
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct TestConnectionParams {
-    scopes: Vec<String>,
-    actions: Vec<String>,
+pub mod response {
+
+    use derive_new::new;
+    use serde::{Deserialize, Serialize};
+    use std::fmt::{Debug, Display};
+
+    #[derive(Debug, Serialize, Deserialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct BasicResponse {
+        pub result: Option<String>,
+        pub error: Option<String>,
+    }
+}
+
+pub mod params {
+    use derive_new::new;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Serialize, Deserialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TestConnectionParams {
+        scopes: Vec<String>,
+        actions: Vec<String>,
+    }
+
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Multi<'a, P: Serialize + std::fmt::Debug> {
+        actions: Vec<&'a Action<'a, P>>,
+    }
+
+    #[derive(Debug, Serialize, new)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Action<'a, P: Serialize + std::fmt::Debug> {
+        action: &'a str,
+        version: u8,
+        params: &'a P,
+    }
 }

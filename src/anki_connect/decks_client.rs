@@ -60,7 +60,7 @@ impl DecksClient<'_> {
     }
 
     /// Moves cards with the given IDs to a different deck, creating the deck if it doesn't exist yet.
-    pub fn change_deck(&self, cards: &Vec<&CardId>, deck: &str) -> Result<bool, APIError> {
+    pub fn change_deck(&self, cards: Vec<&CardId>, deck: &str) -> Result<bool, APIError> {
         self.0
             .request::<Option<()>, _>("changeDeck", Some(params::ChangeDeck::new(cards, deck)))
             .map(|_| true)
@@ -106,7 +106,7 @@ pub mod params {
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
     pub struct ChangeDeck<'a> {
-        cards: &'a Vec<&'a CardId>,
+        cards: Vec<&'a CardId>,
         deck: &'a str,
     }
 

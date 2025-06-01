@@ -23,7 +23,7 @@ pub enum M2AnkiError {
     ProgressBarError,
     SerdeJsonError(SerdeJsonError),
     CardIdNotFound(String),
-    NoteIdNotFound,
+    NoteIdNotFound(String),
     NoteHasNoCards,
     DeckNameNotFound(String),
     AnkiNoteNotFound(String),

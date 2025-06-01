@@ -23,31 +23,37 @@ use strum::{Display, EnumString};
 #[derive(Debug, Display, Clone, EnumString, Serialize)]
 #[strum(serialize_all = "PascalCase")]
 #[enum_dispatch(InternalModelMethods)]
-pub enum ModelType {
-    Basic(Basic),
+pub enum ModelType<'a> {
+    Basic(Basic<'a>),
     // Rule(Rule),
     // Word(Word),
 }
 
-impl Default for ModelType {
+impl<'a> Default for ModelType<'a> {
     fn default() -> Self {
         ModelType::Basic(Basic::default())
     }
 }
 
 #[enum_dispatch]
-pub trait InternalModelMethods: Debug + Default {
-    fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self;
-    fn to_create_model<'a>(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a>;
-    fn get_fields<'a>(&'a self) -> HashMap<&'a str, &'a str>;
+pub trait InternalModelMethods<'a>: Debug + Default {
+    fn from_callout(
+        &self,
+        callout: &Callout,
+        header_lang: Option<&str>,
+        deck_name: &'a str,
+    ) -> Self;
+    fn to_create_model(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a>;
+    fn get_fields(&'a self) -> HashMap<&'a str, &'a str>;
     fn to_note(self, model: Model) -> Result<Note, APIError>;
-    fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a>;
-    fn to_update_note<'a>(&'a self, note_id: &'a NoteId) -> notes_params::UpdateNoteFields<'a>;
-    fn get_operation<'a>(&'a self) -> NoteOperation;
-    fn get_markdown_id<'a>(&'a self) -> &'a String;
-    fn get_audio<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
-    fn get_video<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
-    fn get_picture<'a>(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
+    fn to_add_note(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a>;
+    fn to_update_note(&'a self, note_id: &'a NoteId) -> notes_params::UpdateNoteFields<'a>;
+    fn get_deck_name(&'a self) -> &'a str;
+    fn get_operation(&'a self) -> NoteOperation;
+    fn get_markdown_id(&'a self) -> &'a String;
+    fn get_audio(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
+    fn get_video(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
+    fn get_picture(&'a self) -> Option<&'a Vec<MediaFile<'a>>>;
 }
 
 #[derive(Debug, Serialize, Clone, new)]

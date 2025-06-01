@@ -24,16 +24,23 @@ use crate::callout::Callout;
 use super::InternalModelMethods;
 
 #[derive(Debug, Default, Clone, Serialize)]
-pub struct Basic {
-    pub operation: NoteOperation,
-    pub markdown_id: String,
-    pub front: String,
-    pub back: String,
+pub struct Basic<'a> {
+    deck_name: &'a str,
+    operation: NoteOperation,
+    markdown_id: String,
+    front: String,
+    back: String,
 }
 
-impl InternalModelMethods for Basic {
-    fn from_callout(&self, callout: &Callout, header_lang: Option<&str>) -> Self {
+impl<'a> InternalModelMethods<'a> for Basic<'a> {
+    fn from_callout(
+        &self,
+        callout: &Callout,
+        header_lang: Option<&str>,
+        deck_name: &'a str,
+    ) -> Self {
         Basic {
+            deck_name: &deck_name,
             operation: callout.operation,
             markdown_id: callout.markdown_id.to_owned(),
             front: callout.header.clone(),
@@ -41,7 +48,7 @@ impl InternalModelMethods for Basic {
         }
     }
 
-    fn to_create_model<'a>(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a> {
+    fn to_create_model(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a> {
         let templates = [
             [
                 ("Name", "Recognition"),
@@ -152,7 +159,7 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         // Ok(InternalNote::new(model, field_values, tags))
     }
 
-    fn to_update_note<'a>(&'a self, note_id: &'a NoteId) -> UpdateNoteFields<'a> {
+    fn to_update_note(&'a self, note_id: &'a NoteId) -> UpdateNoteFields<'a> {
         let mut field_values: HashMap<&'a str, &'a str> = HashMap::with_capacity(3);
         field_values.insert("MarkdownID", self.markdown_id.as_str());
         field_values.insert("Front", self.front.as_str());
@@ -171,7 +178,7 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         ))
     }
 
-    fn get_fields<'a>(&'a self) -> HashMap<&'a str, &'a str> {
+    fn get_fields(&'a self) -> HashMap<&'a str, &'a str> {
         let mut field_values: HashMap<&'a str, &'a str> = HashMap::with_capacity(3);
         field_values.insert("MarkdownID", self.markdown_id.as_str());
         field_values.insert("Front", self.front.as_str());
@@ -179,7 +186,7 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         field_values
     }
 
-    fn to_add_note<'a>(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a> {
+    fn to_add_note(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a> {
         let mut fields: HashMap<&str, &str> = HashMap::with_capacity(3);
         fields.insert("MarkdownID", self.markdown_id.as_str());
         fields.insert("Front", self.front.as_str());
@@ -201,25 +208,28 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         )
     }
 
-    fn get_operation<'a>(&'a self) -> NoteOperation {
+    fn get_deck_name(&'a self) -> &'a str {
+        self.deck_name
+    }
+    fn get_operation(&'a self) -> NoteOperation {
         self.operation
     }
 
-    fn get_markdown_id<'a>(&'a self) -> &'a String {
+    fn get_markdown_id(&'a self) -> &'a String {
         &self.markdown_id
     }
 
-    fn get_audio<'a>(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
+    fn get_audio(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
         // TODO: impletment this method
         None
     }
 
-    fn get_picture<'a>(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
+    fn get_picture(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
         // TODO: impletment this method
         None
     }
 
-    fn get_video<'a>(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
+    fn get_video(&'a self) -> Option<&'a Vec<super::MediaFile<'a>>> {
         // TODO: impletment this method
         None
     }

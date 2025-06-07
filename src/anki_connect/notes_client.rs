@@ -138,7 +138,6 @@ impl NotesClient<'_> {
         &self,
         deck_name: &str,
     ) -> Result<Vec<responses::NoteInfo>, APIError> {
-        let query = format!("deck:{}", deck_name);
         self.notes_info_by_query(&format!("deck:{}", deck_name))
     }
 
@@ -297,7 +296,6 @@ pub mod responses {
     use rayon::prelude::*;
     use serde::Deserialize;
     use serde::Deserializer;
-    use serde_json::Value;
 
     use crate::anki_connect::{card::CardId, note::NoteId};
     use crate::note_operation::NoteOperation;

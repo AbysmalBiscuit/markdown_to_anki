@@ -61,9 +61,11 @@ impl TryFrom<&PathBuf> for Deck {
     fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
         let callouts_results = Callout::extract_callouts(value);
         if !callouts_results.failed.is_empty() {
+            // TODO: extract line numbers to report more accurate errors about why making some
+            // caloluts failed.
             let content: String = match read_to_string(value) {
                 Ok(text) => text,
-                Err(err) => "".to_string(),
+                Err(_) => "".to_string(),
             };
             if !content.is_empty() {}
         }

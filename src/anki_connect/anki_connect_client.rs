@@ -1,14 +1,12 @@
 use enum_dispatch::enum_dispatch;
-use params::Action;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::{fmt::Debug, time::Duration};
+use serde::{Serialize, de::DeserializeOwned};
+use std::fmt::Debug;
 use strum::{Display, EnumString};
 
 use super::{
     cards_client::CardsClient, client::ClientBehavior, decks_client::DecksClient, error::APIError,
-    models_client::ModelsClient, notes_client::NotesClient, params::Params, response::Response,
+    models_client::ModelsClient, notes_client::NotesClient,
 };
-use ureq::Agent;
 
 #[cfg(feature = "reqwest_blocking")]
 use super::client::ReqwestClient;
@@ -24,12 +22,6 @@ pub enum AnkiConnectClient {
     #[cfg(feature = "ureq_blocking")]
     UreqClient(UreqClient),
 }
-
-// #[derive(Debug, Clone)]
-// pub struct AnkiConnectClient {
-//     agent: Agent,
-//     url: String,
-// }
 
 impl AnkiConnectClient {
     pub fn new(url: Option<&str>, port: Option<u32>) -> Self {
@@ -95,7 +87,7 @@ pub mod response {
 
     use derive_new::new;
     use serde::{Deserialize, Serialize};
-    use std::fmt::{Debug, Display};
+    use std::fmt::Debug;
 
     #[derive(Debug, Serialize, Deserialize, new)]
     #[serde(rename_all = "camelCase")]

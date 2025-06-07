@@ -101,7 +101,7 @@ impl Callout {
             });
         let failed: Vec<(String, CalloutError)> = failed
             .into_par_iter()
-            .filter(|(text, err)| !matches!(err, CalloutError::NotFlashcardCompatible))
+            .filter(|(_, err)| !matches!(err, CalloutError::NotFlashcardCompatible))
             .collect();
 
         (callouts, failed).into()

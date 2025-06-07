@@ -1,20 +1,15 @@
 use crate::{
     anki_connect::{
-        error::APIError,
-        model::Model,
         models_client::params::CreateModel,
-        note::{Note, NoteId},
+        note::NoteId,
         notes_client::params::{
-            self, AddNoteNote, AddNoteOptions, DuplicateScopeOptions, UpdateNoteFields,
+            AddNoteNote, AddNoteOptions, DuplicateScopeOptions, UpdateNoteFields,
             UpdateNoteFieldsNote,
         },
     },
     note_operation::NoteOperation,
 };
-use std::{
-    borrow::Cow,
-    collections::{HashMap, HashSet},
-};
+use std::{borrow::Cow, collections::HashMap};
 
 use rayon::prelude::*;
 use serde::Serialize;
@@ -144,19 +139,6 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
             Some(false),
             card_templates,
         )
-    }
-
-    fn to_note(self, model: Model) -> Result<Note, APIError> {
-        todo!()
-        // let mut field_values: HashMap<String, String> = HashMap::with_capacity(3);
-        // field_values.insert("MarkdownID".into(), self.markdown_id);
-        // field_values.insert("Front".into(), self.front);
-        // field_values.insert("Back".into(), self.back);
-        // let mut tags: HashSet<String> = HashSet::with_capacity(1);
-        // tags.insert("md2anki".to_string());
-        // let media: Vec<String> = Vec::new();
-        // Note::new(model, field_values, tags, media)
-        // Ok(InternalNote::new(model, field_values, tags))
     }
 
     fn to_update_note(&'a self, note_id: &'a NoteId) -> UpdateNoteFields<'a> {

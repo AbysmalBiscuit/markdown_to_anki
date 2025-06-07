@@ -1,43 +1,34 @@
-use crate::anki_connect;
-use crate::anki_connect::anki_connect_client::params::{self as client_params, Action};
+use crate::anki_connect::anki_connect_client::params::Action;
 use crate::anki_connect::anki_connect_client::response::BasicResponse;
 use crate::anki_connect::card::CardId;
-use crate::anki_connect::deck::DeckId;
 use crate::anki_connect::decks_client::params::ChangeDeck;
-use crate::anki_connect::notes_client::params::{
-    self as notes_params, AddNote, AddNoteNote, UpdateNoteFields,
-};
+use crate::anki_connect::notes_client::params::{AddNote, UpdateNoteFields};
 use crate::anki_connect::notes_client::responses::NoteInfo;
-use crate::anki_connect::response::Response;
-use crate::anki_connect::{
-    AnkiConnectClient, ClientBehavior, error::APIError, model::Model, note::NoteId,
-};
+use crate::anki_connect::{AnkiConnectClient, error::APIError, model::Model, note::NoteId};
 use crate::callout::Callout;
 use crate::cli::SyncArgs;
 use crate::deck::Deck;
 use crate::find_markdown_files::find_markdown_files;
+use crate::model::InternalModelMethods;
 use crate::model::ModelType;
-use crate::model::{InternalModelMethods, MediaFile};
 use crate::note_operation::NoteOperation;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use rayon::iter::{Either, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use std::cmp::{max, min};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use std::cmp::min;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs::{File, read_to_string};
 use std::io::Write;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::thread;
 use tracing::{debug, error, info, warn};
-use tracing_subscriber::field::debug;
 
 use rayon::prelude::*;
 
 use crate::error::M2AnkiError;
 use crate::progress::{
-    BAR_CHART, CROSS, LOOKING_GLASS, PLUS, RECYCLE, REPEAT, SHUFFLE, SPARKLE, SYNC, Step,
+    BAR_CHART, CROSS, LOOKING_GLASS, PLUS, REPEAT, SHUFFLE, SPARKLE, SYNC, Step,
 };
 
 #[derive(Debug)]
@@ -147,7 +138,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
         info!("Found {} markdown files", &markdown_files.len());
 
-        let mut decks: Vec<Deck> = markdown_files
+        let decks: Vec<Deck> = markdown_files
             .par_iter()
             .map(Deck::try_from)
             .filter(Result::is_ok)
@@ -281,14 +272,12 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // return Ok(());
 
     // Get existing notes
-    let mut anki_notes_in_deck = if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
+    let anki_notes_in_deck = if client.decks().find_deck_id_by_name(&parent_deck).is_ok() {
         client.notes().get_notes_by_deck_name(&parent_deck)?
     } else {
         Vec::new()
     };
 
-    let mut markdown_id_to_anki_note: HashMap<&String, &NoteInfo> = HashMap::new();
-    let mut markdown_id_to_anki_note_id: HashMap<&String, &NoteId> = HashMap::new();
     let mut operation_params = OperationParams {
         add: vec![],
         update: vec![],
@@ -297,21 +286,14 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         notes: vec![],
         notes_errors: vec![],
     };
-    let mut to_delete_anki_cards: Vec<&NoteId> = vec![];
 
     if !anki_notes_in_deck.is_empty() {
-        let anki_all_card_ids: Vec<&CardId> = anki_notes_in_deck
-            .par_iter()
-            .map(|note| &note.cards)
-            .flatten()
-            .collect();
-
-        markdown_id_to_anki_note = anki_notes_in_deck
+        let markdown_id_to_anki_note: HashMap<&String, &NoteInfo> = anki_notes_in_deck
             .par_iter()
             .map(|note| (&note.markdown_id, note))
             .collect();
 
-        markdown_id_to_anki_note_id = anki_notes_in_deck
+        let markdown_id_to_anki_note_id: HashMap<&String, &NoteId> = anki_notes_in_deck
             .par_iter()
             .map(|note| (&note.markdown_id, &note.note_id))
             .collect();
@@ -350,17 +332,12 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
         // Set operations for each Callout
         decks.par_iter_mut().for_each(|deck| {
-            let deck_name = &deck.qualified_name;
             deck.callouts.par_iter_mut().try_for_each(|callout| {
                 // Callout is new
                 if !markdown_id_to_anki_note_id.contains_key(&callout.markdown_id) {
                     callout.operation = NoteOperation::Add;
                     Ok::<(), M2AnkiError>(())
                 } else {
-                    let anki_note_id = markdown_id_to_anki_note_id
-                        .get(&callout.markdown_id)
-                        .unwrap();
-
                     if markdown_id_to_anki_deck
                         .get(&callout.markdown_id)
                         .ok_or(M2AnkiError::DeckNameNotFound(format!(
@@ -564,7 +541,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
         let move_actions_refs: Vec<&Action<ChangeDeck>> = move_actions.par_iter().collect();
 
-        let mut chunk_size = min(move_actions_refs.len(), 500);
+        let chunk_size = min(move_actions_refs.len(), 500);
 
         for chunk in move_actions_refs.chunks(chunk_size) {
             match client.multi::<ChangeDeck, BasicResponse>(chunk.to_vec()) {
@@ -586,10 +563,10 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
     // Delete removed notes
     m.suspend(|| step.print_step(Some("Deleting notes"), Some(CROSS)));
-    if !to_delete_anki_cards.is_empty() {
+    if !operation_params.delete.is_empty() {
         client.notes().delete_notes(&operation_params.delete);
-        sync_stats.num_deleted += to_delete_anki_cards.len() as u64;
-        global_pbar.inc(to_delete_anki_cards.len().try_into().unwrap());
+        sync_stats.num_deleted += operation_params.delete.len() as u64;
+        global_pbar.inc(operation_params.delete.len().try_into().unwrap());
     }
 
     // TODO: find a way to delete empty decks

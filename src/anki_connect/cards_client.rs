@@ -1,4 +1,4 @@
-use super::{AnkiConnectClient, error::APIError, response::Response};
+use super::AnkiConnectClient;
 
 #[derive(Debug, Clone)]
 pub struct CardsClient<'a>(pub &'a AnkiConnectClient);

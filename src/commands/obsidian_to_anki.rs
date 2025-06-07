@@ -4,7 +4,7 @@ use tracing::{info, warn};
 
 use crate::{
     callout::{Callout, ExtractCalloutsResult},
-    error::{GenericSyncError, M2AnkiError},
+    error::M2AnkiError,
     find_markdown_files,
     progress::{LOOKING_GLASS, print_step},
 };

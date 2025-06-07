@@ -5,7 +5,7 @@ mod basic;
 use crate::anki_connect::models_client::params::CreateModel;
 use crate::anki_connect::note::NoteId;
 use crate::anki_connect::notes_client::params as notes_params;
-use crate::anki_connect::{APIError, model::Model, note::Note, notes_client::params::AddNoteNote};
+use crate::anki_connect::notes_client::params::AddNoteNote;
 use crate::callout::Callout;
 use crate::note_operation::NoteOperation;
 
@@ -45,7 +45,6 @@ pub trait InternalModelMethods<'a>: Debug + Default {
     ) -> Self;
     fn to_create_model(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a>;
     fn get_fields(&'a self) -> HashMap<&'a str, &'a str>;
-    fn to_note(self, model: Model) -> Result<Note, APIError>;
     fn to_add_note(&'a self, deck_name: &'a str, model_name: &'a str) -> AddNoteNote<'a>;
     fn to_update_note(&'a self, note_id: &'a NoteId) -> notes_params::UpdateNoteFields<'a>;
     fn get_deck_name(&'a self) -> &'a str;

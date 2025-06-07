@@ -1,9 +1,3 @@
-use std::collections::HashMap;
-
-use params::CreateModel;
-
-use crate::model::ModelType;
-
 use super::{
     AnkiConnectClient, client::ClientBehavior, error::APIError, model::Model, response::Response,
 };

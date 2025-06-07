@@ -1,78 +1,52 @@
-use std::error::Error;
-use std::fmt::Display;
+use std::any::Any;
+use std::error::Error as StdError;
 use std::io::Error as IOError;
 
 use crate::anki_connect::error::APIError;
 use crate::deck::DeckError;
 use serde_json::Error as SerdeJsonError;
+use thiserror::Error;
 
-pub type GenericError = Box<dyn Error + Send>;
-pub type GenericSyncError = Box<dyn Error + Send + Sync>;
-pub type GenericSendStatic = Box<dyn Error + Send + 'static>;
+pub type GenericError = Box<dyn StdError + Send>;
+pub type GenericSyncError = Box<dyn StdError + Send + Sync>;
+pub type GenericSendStatic = Box<dyn StdError + Send + 'static>;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum M2AnkiError {
-    APIError(APIError),
-    DeckError(DeckError),
-    GenericError(GenericError),
-    GenericSyncError(GenericSyncError),
-    GenericSendStatic(GenericSendStatic),
-    IOError(IOError),
-    ThreadPanic,
-    ModelParseError(strum::ParseError),
-    ProgressBarError,
-    SerdeJsonError(SerdeJsonError),
-    CardIdNotFound(String),
-    NoteIdNotFound(String),
-    NoteHasNoCards,
+    #[error("error from AnkiConnect API: '{0}'")]
+    APIError(#[from] APIError),
+    // #[error("Anki note not found with ID: '{0}'")]
+    // AnkiNoteNotFound(String),
+    // #[error("Card ID not found: '{0}'")]
+    // CardIdNotFound(String),
+    #[error("Deck error: {0}")]
+    DeckError(#[from] DeckError),
+    #[error("cannot find deck with name: '{0}'")]
     DeckNameNotFound(String),
-    AnkiNoteNotFound(String),
-}
-
-impl Display for M2AnkiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self,)
-    }
-}
-
-impl From<std::io::Error> for M2AnkiError {
-    fn from(value: std::io::Error) -> Self {
-        M2AnkiError::IOError(value)
-    }
-}
-
-impl From<APIError> for M2AnkiError {
-    fn from(value: APIError) -> Self {
-        M2AnkiError::APIError(value)
-    }
-}
-
-impl From<DeckError> for M2AnkiError {
-    fn from(value: DeckError) -> Self {
-        M2AnkiError::DeckError(value)
-    }
-}
-
-impl From<GenericSendStatic> for M2AnkiError {
-    fn from(value: GenericSendStatic) -> Self {
-        M2AnkiError::GenericSendStatic(value)
-    }
-}
-
-impl From<strum::ParseError> for M2AnkiError {
-    fn from(value: strum::ParseError) -> Self {
-        M2AnkiError::ModelParseError(value)
-    }
+    #[error("error: {0}")]
+    GenericError(#[from] GenericError),
+    #[error("error: {0}")]
+    GenericSendStatic(GenericSendStatic),
+    #[error("error: {0}")]
+    GenericSyncError(#[from] GenericSyncError),
+    #[error("Deck error: {0}")]
+    IOError(#[from] IOError),
+    #[error("error parsing model: {0}")]
+    ModelParseError(#[from] strum::ParseError),
+    #[error("error")]
+    NoteHasNoCards,
+    #[error("Deck error: {0}")]
+    NoteIdNotFound(String),
+    #[error("error")]
+    ProgressBarError,
+    #[error("JSON parsing error: '{0}'")]
+    SerdeJsonError(#[from] SerdeJsonError),
+    #[error("thread panicked: '{0:?}'")]
+    ThreadPanic(Box<dyn Any + Send>),
 }
 
 impl From<&str> for M2AnkiError {
     fn from(value: &str) -> Self {
         M2AnkiError::GenericSyncError(value.into())
-    }
-}
-
-impl From<SerdeJsonError> for M2AnkiError {
-    fn from(value: SerdeJsonError) -> Self {
-        M2AnkiError::SerdeJsonError(value)
     }
 }

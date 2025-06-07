@@ -124,7 +124,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     let tx_client = tx.clone();
     let client_handle = thread::spawn(move || {
         let res: bool = client_clone.test_connection().unwrap_or(false);
-        tx_client.send(("client", res));
+        let _ = tx_client.send(("client", res));
     });
 
     let input_dir_clone = args.input_dir.clone();
@@ -134,7 +134,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     let markdown_files_hadle = thread::spawn(move || {
         let markdown_files = find_markdown_files(&input_dir_clone).unwrap_or_else(|_| Vec::new());
         let found_files = !markdown_files.is_empty();
-        tx_files.send(("md_files", found_files));
+        let _ = tx_files.send(("md_files", found_files));
 
         info!("Found {} markdown files", &markdown_files.len());
 
@@ -153,7 +153,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .collect();
 
         let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
-        tx_files.send(("num_callouts", total_callouts > 0));
+        let _ = tx_files.send(("num_callouts", total_callouts > 0));
 
         let num_found_decks: usize = decks.len();
         let num_total_callouts: usize = decks.par_iter().map(|d| d.callouts.len()).sum();
@@ -225,10 +225,12 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         }
     }
 
-    client_handle.join().map_err(|_| M2AnkiError::ThreadPanic)?;
+    client_handle
+        .join()
+        .map_err(|err| M2AnkiError::ThreadPanic(err))?;
     let (mut decks, total_callouts, model_type, css) = markdown_files_hadle
         .join()
-        .map_err(|_| M2AnkiError::ThreadPanic)?;
+        .map_err(|err| M2AnkiError::ThreadPanic(err))?;
 
     let model_type = model_type?;
     let css = css?;
@@ -332,7 +334,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
         // Set operations for each Callout
         decks.par_iter_mut().for_each(|deck| {
-            deck.callouts.par_iter_mut().try_for_each(|callout| {
+            let _ = deck.callouts.par_iter_mut().try_for_each(|callout| {
                 // Callout is new
                 if !markdown_id_to_anki_note_id.contains_key(&callout.markdown_id) {
                     callout.operation = NoteOperation::Add;
@@ -480,7 +482,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let chunk_size = min(add_actions_refs.len(), 500);
 
         for chunk in add_actions_refs.chunks(chunk_size) {
-            match client.multi::<AddNote, BasicResponse>(chunk.to_vec()) {
+            let _ = match client.multi::<AddNote, BasicResponse>(chunk.to_vec()) {
                 // TODO: parse response to collect detailed errors for individual actions
                 Ok(response) => {
                     global_pbar.inc(response.len().try_into().unwrap());
@@ -513,7 +515,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let chunk_size = min(update_actions_refs.len(), 500);
 
         for chunk in update_actions_refs.chunks(chunk_size) {
-            match client.multi::<UpdateNoteFields, BasicResponse>(chunk.to_vec()) {
+            let _ = match client.multi::<UpdateNoteFields, BasicResponse>(chunk.to_vec()) {
                 // TODO: parse response to collect detailed errors for individual actions
                 Ok(response) => {
                     global_pbar.inc(response.len().try_into().unwrap());
@@ -544,7 +546,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let chunk_size = min(move_actions_refs.len(), 500);
 
         for chunk in move_actions_refs.chunks(chunk_size) {
-            match client.multi::<ChangeDeck, BasicResponse>(chunk.to_vec()) {
+            let _ = match client.multi::<ChangeDeck, BasicResponse>(chunk.to_vec()) {
                 // TODO: parse response to collect detailed errors for individual actions
                 Ok(response) => {
                     global_pbar.inc(response.len().try_into().unwrap());
@@ -564,7 +566,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Delete removed notes
     m.suspend(|| step.print_step(Some("Deleting notes"), Some(CROSS)));
     if !operation_params.delete.is_empty() {
-        client.notes().delete_notes(&operation_params.delete);
+        let _ = client.notes().delete_notes(&operation_params.delete);
         sync_stats.num_deleted += operation_params.delete.len() as u64;
         global_pbar.inc(operation_params.delete.len().try_into().unwrap());
     }

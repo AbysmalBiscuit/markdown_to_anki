@@ -20,6 +20,7 @@ use crate::error::M2AnkiError;
 use crate::find_markdown_files::find_markdown_files;
 
 use std::path::PathBuf;
+use tracing::error;
 use tracing_subscriber::FmtSubscriber;
 
 use clap::Parser;
@@ -50,7 +51,10 @@ fn main() -> Result<(), M2AnkiError> {
                 output_file.map_or_else(|| input_dir.join("Anki cards.md"), |p| p.to_path_buf());
             create_markdown_anki_cards_file(&input_dir, output_file_path)?
         }
-        Commands::Sync(sync_args) => sync(sync_args)?,
+        Commands::Sync(sync_args) => match sync(sync_args) {
+            Ok(_) => (),
+            Err(err) => error!("{:?}", err),
+        },
         // _ => unreachable!(),
     }
 

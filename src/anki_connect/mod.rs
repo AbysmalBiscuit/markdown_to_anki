@@ -14,4 +14,3 @@ pub(crate) mod response;
 mod util;
 
 pub use anki_connect_client::AnkiConnectClient;
-pub use error::APIError;

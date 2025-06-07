@@ -1,20 +1,18 @@
 use std::{
-    error::Error,
     fs::read_to_string,
     path::{Path, PathBuf},
 };
 
 use strum::Display;
+use thiserror::Error;
 
 use crate::callout::{Callout, error::CalloutError};
 
-#[derive(Display, Debug)]
+#[derive(Error, Display, Debug)]
 pub enum DeckError {
-    Io(std::io::Error),
+    Io(#[from] std::io::Error),
     WrongMarkdownFileExtension(PathBuf),
 }
-
-impl Error for DeckError {}
 
 #[derive(Debug)]
 pub struct Deck {

@@ -5,12 +5,62 @@ use crate::Callout;
 use regex::Regex;
 use std::sync::LazyLock;
 
-const CJK_CHARACTER_RANGES: &str = r"\u2E80-\u2FD5\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF5F-\uFF9F";
-const CJK_PUNCTUATION: &str =
-    r"　。︒。，！？；：（ ）［］【 】『 』「 」﹁﹂“‘’”﹃﹁﹂﹄、·《》〈〉…⋯⸺–～";
-
 static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u2E80-\u2FD5\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF5F-\uFF9FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\<>]+(?: [\u2E80-\u2FD5\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF5F-\uFF9FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\<>]+)*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)? *(.*?)?$"#).unwrap()
+    const CJK_CHARACTER_RANGES: &str = concat!(
+        r"\u2E80-\u2FD5",
+        // r"\u3000-\u303F\u3040-\u309F\u30A0-\u30FF",
+        r"\u3000-\u30FF",
+        // r"\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163",
+        r"\u3131-\u3163",
+        r"\u31F0-\u31FF",
+        r"\u3220-\u3243",
+        r"\u3280-\u337F",
+        r"\u3400-\u4DBF",
+        r"\u4E00-\u9FFF",
+        r"\uAC00-\uD7AF",
+        r"\uF900-\uFAFF",
+        r"\uFF5F-\uFF9F"
+    );
+    const CJK_PUNCTUATION: &str = concat!(
+        r"　。︒。，、·！？",
+        "；：",
+        "（ ）［］【 】『 』「 」﹁﹂﹃﹄﹁﹂《》〈〉",
+        "“‘’”",
+        "…⋯⸺–～",
+    );
+    const PUNCTUATION: &str = r#".,?!'"()\[\]{}\-+|*_/\\<> "#;
+    const ENGLISH: &str = r"A-Za-z";
+    const NUMBERS: &str = r"0-9";
+    const EXTRA_LATIN: &str = concat!(
+        r"\u00C0-\u00D6",
+        r"\u00D8-\u00F6",
+        r"\u00F8-\u00FF",
+        r"\u0100-\u017F",
+        r"\u0180-\u024F",
+    );
+    const IPA: &str = r"\u0250–\u02AF";
+    let first_match = format!(
+        r"{cjk_character_ranges}{cjk_punctuation}{punctuation}{english}{numbers}",
+        cjk_character_ranges = CJK_CHARACTER_RANGES,
+        cjk_punctuation = CJK_PUNCTUATION,
+        punctuation = PUNCTUATION,
+        english = ENGLISH,
+        numbers = NUMBERS
+    );
+    let second_match = format!(
+        r"{english}{extra_latin}{ipa}",
+        english = ENGLISH,
+        extra_latin = EXTRA_LATIN,
+        ipa = IPA,
+    );
+    let pattern = format!(
+        r#"^(?:> )?> \[!(.+?)\][+-]? ?([{first_match_1}]+(?: [{first_match_2}]+)*)?(  [{second_match}]*)? *(.*?)?$"#,
+        first_match_1 = first_match,
+        first_match_2 = first_match,
+        second_match = second_match,
+    );
+    // Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u2E80-\u2FD5\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF5F-\uFF9FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\<>]+(?: [\u2E80-\u2FD5\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF5F-\uFF9FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\<>]+)*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)? *(.*?)?$"#).unwrap()
+    Regex::new(&pattern).unwrap()
 });
 
 impl TryFrom<Vec<&str>> for Callout {

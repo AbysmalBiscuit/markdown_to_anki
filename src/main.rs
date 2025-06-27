@@ -51,6 +51,8 @@ fn main() -> Result<(), M2AnkiError> {
                 output_file.map_or_else(|| input_dir.join("Anki cards.md"), |p| p.to_path_buf());
             create_markdown_anki_cards_file(&input_dir, output_file_path)?
         }
+        // sync_args has a .run() sync.run() -> add a method to the struct
+        // an option is to do the impl on the SyncArgs
         Commands::Sync(sync_args) => match sync(sync_args) {
             Ok(_) => (),
             Err(err) => error!("{:?}", err),

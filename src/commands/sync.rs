@@ -102,12 +102,16 @@ struct OperationParams<'a> {
 
 pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Extract args into variables
+    // it's better to use expect instead of unwrap
+    // prefer to unwrap with special people
+    // if let Some(...) = ... { ... } else { panic!() }
     let parent_deck = args.deck.unwrap().to_string();
     let model_type_name = args.model_type_name.unwrap().to_string();
     let model_name = args
         .model_name
         .unwrap_or_else(|| format!("md2anki {}", &model_type_name));
-    let header_lang: Option<String> = Some(args.header_lang.clone().unwrap().to_string());
+    let header_lang = args.header_lang.map(|item| item.to_string());
+    // let header_lang: Option<String> = Some(args.header_lang.clone().unwrap().to_string());
     let input_dir = &args.input_dir;
 
     let mut step = Step::new(1, 10);
@@ -122,6 +126,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Test client connection
     let client_clone = client.clone();
     let tx_client = tx.clone();
+    // put testing stuff in a function
+    // take the client by reference and do the clone in the function and do the testing there
     let client_handle = thread::spawn(move || {
         let res: bool = client_clone.test_connection().unwrap_or(false);
         let _ = tx_client.send(("client", res));
@@ -131,6 +137,23 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     let parent_deck_clone = parent_deck.clone();
     let tx_files = tx.clone();
     step.print_step(Some("Extracting decks"), Some(LOOKING_GLASS));
+    // pass in the channel handle as one of the function parameter
+    // think of it as a unit of work that stands alone
+    // functions serve 2 purposes:
+    // 1) code reuse
+    // 2) organziation, managinging complexity and congnitive overhead.
+    //
+    // In Python this costs something, but in rust this will get inlined.
+    //
+    // if you're not using a profiler to find hotspots, don't worry about inlining
+    // if your cpu spends a lot of time in jump (in a tight loop), then inlining may be worth it
+    // more functions may be better when profiling as it makes it easier to find hotspots
+    //
+    // in rust a single line function that hides a long clone change can be valid to improve
+    // readability
+    //
+    // once your closure is more than 1/3 of your screen you need a function, or like 5 lines
+    // (Igor's rule of thumb)
     let markdown_files_hadle = thread::spawn(move || {
         let markdown_files = find_markdown_files(&input_dir_clone).unwrap_or_else(|_| Vec::new());
         let found_files = !markdown_files.is_empty();
@@ -145,6 +168,13 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .map(Result::unwrap)
             .filter(|deck| !deck.callouts.is_empty())
             .map(|mut deck| {
+                // deck.with_name(input_dir, parent_deck) -> Deck
+                // this returns the same deck but modified
+                // this would fit more nicely in the builder pattern
+                //
+                // the rustic thing is to take things by value, consuming them and then returning
+                // something new
+                // mut references are fine if they are more ergonomic
                 deck.qualified_name = deck
                     .get_qualified_name(Some(&input_dir_clone), Some(&parent_deck_clone))
                     .unwrap_or_default();
@@ -152,11 +182,20 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             })
             .collect();
 
-        let total_callouts: usize = decks.par_iter().map(|deck| deck.callouts.len()).sum();
+        // doing a par_iter may not really improve the speed here.
+        // using the previous par_iter to create the vec and total count as a tuple, then using a reducer to
+        // create the final vector and int.
+        let total_callouts: usize = decks.iter().map(|deck| deck.callouts.len()).sum();
         let _ = tx_files.send(("num_callouts", total_callouts > 0));
 
+        // a more optimized thing is to use a semaphore that sends information in a multithreaded
+        // context by incrementing and decrementing.
+        // it's like the with() as ...: pattern in Python.
+        // the guard inside is increments whenever it reaches a block.
+        // it's used to do blocking in a parallel context.
+        // You implement it using Atomic or Mutex.
         let num_found_decks: usize = decks.len();
-        let num_total_callouts: usize = decks.par_iter().map(|d| d.callouts.len()).sum();
+        let num_total_callouts: usize = decks.iter().map(|d| d.callouts.len()).sum();
 
         // Display errors for callouts that couldn't be parsed
         let failed_decks: Vec<&Deck> = decks
@@ -164,6 +203,11 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .filter(|deck| !deck.failed.is_empty())
             .collect();
         if !failed_decks.is_empty() {
+            // this can be rewritten as a .iter() or .into_iter()
+            // have the Deck handle it's formatting error message
+            // using the result type would be the rustic way
+            // using anyhow gets you close.
+            // you can use a match to display on error and otherwise add it to the vec
             for deck in failed_decks {
                 let mut err_msg = Vec::with_capacity(deck.failed.len() + 1);
                 err_msg.push(format!(
@@ -199,6 +243,9 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         (decks, total_callouts, model_type, css)
     });
 
+    // using constants: to say why 0..3
+    // this can be done as a funciton that can return an error, and on the first error you return
+    // an error.
     for _ in 0..3 {
         match rx.recv() {
             Ok(("client", false)) => {
@@ -237,6 +284,11 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
     let mut created_model = false;
 
+    // another way of doing this is:
+    // let created_model = { ... } else { ... };
+    // or:
+    // client.models().find_by_name().map()
+    // then closure goes inside
     let note_type: Model = match client.models().find_by_name(vec![&model_name]) {
         Ok(models) => {
             if models.is_empty() {
@@ -266,6 +318,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     }
 
     // Delete the deck
+    // this would make more sense in a separate function
+    // this would be truncation
     if args.delete_existing {
         let _ = client.decks().delete(&parent_deck);
     }
@@ -289,6 +343,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         notes_errors: vec![],
     };
 
+    // add comments
     if !anki_notes_in_deck.is_empty() {
         let markdown_id_to_anki_note: HashMap<&String, &NoteInfo> = anki_notes_in_deck
             .par_iter()
@@ -309,6 +364,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let anki_decks: HashMap<String, Vec<CardId>> =
             client.decks().get_decks(&anki_all_card_ids)?;
 
+        // replace par_iter with just iter
+        // use par_iter when there's enough work to benefit going into a thread
         let anki_card_ids_to_deck: HashMap<&CardId, &str> = anki_decks
             .par_iter()
             .map(|(name, cards)| cards.par_iter().map(|card| (card, name.as_str())))
@@ -333,6 +390,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let markdown_id_to_anki_deck = markdown_id_to_anki_deck?;
 
         // Set operations for each Callout
+        // comments to explain if this condition then we do this, else this, we handle the errors
+        // xyz, in human language.
         decks.par_iter_mut().for_each(|deck| {
             let _ = deck.callouts.par_iter_mut().try_for_each(|callout| {
                 // Callout is new
@@ -415,6 +474,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             })
             .collect::<Vec<&NoteId>>()
     }
+
+    // it may be better to have the deck, note, etc. to have the sync function
 
     debug!(
         "OperationParams {{ add: {:?}, update: {:?}, move_: {:?}, delete: {:?} }}",

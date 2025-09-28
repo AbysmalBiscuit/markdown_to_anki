@@ -1,6 +1,6 @@
 # Markdown to Anki
 
-A small rust crate to convert Obsidian callouts notes to formats that can be imported by `ObsidianToAnki` or to interact with `AnkiConnect` directly.
+A small rust crate to convert Obsidian callouts notes to formats that can be imported by the [`Obsidian_to_Anki`](https://github.com/ObsidianToAnki/Obsidian_to_Anki) Obsidian plugin or to interact with `AnkiConnect` directly.
 
 ## Installing
 

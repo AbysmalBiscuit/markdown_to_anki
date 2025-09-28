@@ -29,7 +29,7 @@ command = [
     "-v",
     # "-v",
     "sync",
-    # "--delete",
+    # "--delete-all",
     "--deck",
     "Korean::md2anki",
     "--model",

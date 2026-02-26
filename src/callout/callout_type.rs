@@ -1,5 +1,3 @@
-#![allow(unreachable_patterns)]
-// TODO: fix patterns that are unreachable due to duplicate names in Korean
 use strum::{Display, EnumProperty, EnumString};
 
 #[derive(Debug, Default, Display, EnumString, EnumProperty, PartialEq, Eq)]
@@ -26,10 +24,12 @@ pub enum CalloutType {
     Error,
     #[strum(to_string = "example", serialize = "예", props(ko = "예"))]
     Example,
-    #[strum(to_string = "fail", serialize = "실패", props(ko = "실패"))]
-    Fail,
-    // TODO: find a better way to distinguish Fail and Failure in korean
-    #[strum(to_string = "failure", serialize = "실패", props(ko = "실패"))]
+    #[strum(
+        to_string = "failure",
+        serialize = "fail",
+        serialize = "실패",
+        props(ko = "실패")
+    )]
     Failure,
     #[strum(
         to_string = "faq",

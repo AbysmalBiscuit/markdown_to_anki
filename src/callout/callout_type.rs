@@ -102,3 +102,49 @@ impl CalloutType {
             .join(" ")
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::CalloutType;
+
+    #[test]
+    fn parses_known_callout_en() {
+        let callout_text = "word";
+        let callout_type: CalloutType = callout_text
+            .try_into()
+            .expect("should parse known callout `word` into CalloutType::Word");
+        assert_eq!(callout_type, CalloutType::Word);
+    }
+
+    #[test]
+    fn parses_known_callout_ko() {
+        let callout_text = "단어";
+        let callout_type: CalloutType = callout_text
+            .try_into()
+            .expect("should parse known callout `단어` into CalloutType::Word");
+        assert_eq!(callout_type, CalloutType::Word);
+    }
+
+    #[test]
+    fn parses_known_callout_case_insesitive_en() {
+        let callout_text = "WoRd";
+        let callout_type: CalloutType = callout_text
+            .try_into()
+            .expect("should parse known callout `WoRd` into CalloutType::Word");
+        assert_eq!(callout_type, CalloutType::Word);
+    }
+
+    #[test]
+    fn error_on_uknown_callout() {
+        let callout_text = "unknown";
+        let result: Result<CalloutType, _> = callout_text.try_into();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn error_on_empty_string() {
+        let callout_text = "";
+        let result: Result<CalloutType, _> = callout_text.try_into();
+        assert!(result.is_err());
+    }
+}

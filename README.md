@@ -106,6 +106,7 @@ This would be parsed as:
 
 ### Nested Callout Example
 
+```markdown
 > [!규칙] VS + 자
 > [[반말]] Let's do V
 >
@@ -123,6 +124,7 @@ This would be parsed as:
 > > [[KMS2 Chapter 12 Let's]]
 >
 > ^y6d5vj487m
+```
 
 This would be parsed as:
 

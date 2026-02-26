@@ -20,12 +20,12 @@ pub trait ClientBehavior {
         P: Serialize + std::fmt::Debug;
 }
 
-#[cfg(feature = "reqwest_blocking")]
+#[cfg(all(feature = "reqwest_blocking", not(feature = "ureq_blocking")))]
 mod reqwest_client;
 #[cfg(feature = "ureq_blocking")]
 mod ureq_client;
 
-#[cfg(feature = "reqwest_blocking")]
+#[cfg(all(feature = "reqwest_blocking", not(feature = "ureq_blocking")))]
 pub use reqwest_client::ReqwestClient;
 #[cfg(feature = "ureq_blocking")]
 pub use ureq_client::UreqClient;

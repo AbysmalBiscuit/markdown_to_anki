@@ -8,7 +8,7 @@ use super::{
     models_client::ModelsClient, notes_client::NotesClient,
 };
 
-#[cfg(feature = "reqwest_blocking")]
+#[cfg(all(feature = "reqwest_blocking", not(feature = "ureq_blocking")))]
 use super::client::ReqwestClient;
 
 #[cfg(feature = "ureq_blocking")]
@@ -17,7 +17,7 @@ use super::client::UreqClient;
 #[derive(Debug, Clone, Display, EnumString)]
 #[enum_dispatch(ClientBehavior)]
 pub enum AnkiConnectClient {
-    #[cfg(feature = "reqwest_blocking")]
+    #[cfg(all(feature = "reqwest_blocking", not(feature = "ureq_blocking")))]
     ReqwestClient(ReqwestClient),
     #[cfg(feature = "ureq_blocking")]
     UreqClient(UreqClient),
@@ -25,13 +25,13 @@ pub enum AnkiConnectClient {
 
 impl AnkiConnectClient {
     pub fn new(url: Option<&str>, port: Option<u32>) -> Self {
-        #[cfg(feature = "reqwest_blocking")]
+        #[cfg(all(feature = "reqwest_blocking", not(feature = "ureq_blocking")))]
         {
-            Self::ReqwestClient(ReqwestClient::new(url, port))
+            return Self::ReqwestClient(ReqwestClient::new(url, port));
         }
         #[cfg(feature = "ureq_blocking")]
         {
-            Self::UreqClient(UreqClient::new(url, port))
+            return Self::UreqClient(UreqClient::new(url, port));
         }
 
         // fallback if neither feature is enabled

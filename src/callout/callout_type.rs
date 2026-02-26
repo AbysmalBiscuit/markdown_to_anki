@@ -1,7 +1,7 @@
 use strum::{Display, EnumProperty, EnumString};
 
 #[derive(Debug, Default, Display, EnumString, EnumProperty, PartialEq, Eq)]
-#[strum(serialize_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case", ascii_case_insensitive)]
 pub enum CalloutType {
     // Builtin callouts
     #[strum(to_string = "abstract", serialize = "개요", props(ko = "개요"))]

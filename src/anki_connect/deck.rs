@@ -36,6 +36,7 @@ pub struct Deck {
     other: HashMap<String, Value>,
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_false(b: &bool) -> bool {
     !b
 }

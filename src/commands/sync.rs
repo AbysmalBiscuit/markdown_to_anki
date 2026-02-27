@@ -48,7 +48,7 @@ impl Display for SyncStats {
         let max_value = *[self.added, self.updated, self.moved, self.deleted]
             .iter()
             .max()
-            .unwrap();
+            .unwrap_or(&0u64);
         let width = (max_value + 10).to_string().len();
         let max_value = *[
             self.added_errors,
@@ -58,7 +58,7 @@ impl Display for SyncStats {
         ]
         .iter()
         .max()
-        .unwrap();
+        .unwrap_or(&0u64);
         let width2 = (max_value + 10).to_string().len();
         write!(
             f,
@@ -129,8 +129,10 @@ fn create_missing_decks(
 
 pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Extract args into variables
-    let parent_deck = args.deck.unwrap().to_string();
-    let model_type_name = args.model_type_name.unwrap().to_string();
+    let parent_deck = args.deck.unwrap_or_default();
+    let model_type_name = args
+        .model_type_name
+        .unwrap_or_else(|| String::from("Basic"));
     let model_name = args
         .model_name
         .unwrap_or_else(|| format!("md2anki {}", &model_type_name));

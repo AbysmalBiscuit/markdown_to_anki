@@ -41,7 +41,6 @@ impl AnkiConnectClient {
         // compile_error!("Enable at least one of `ureq_blocking` or `reqwest_blocking` features.");
     }
 
-    #[allow(unused)]
     /// Returns the cards of this [`AnkiConnectClient`].
     pub const fn cards(&self) -> CardsClient<'_> {
         CardsClient(self)

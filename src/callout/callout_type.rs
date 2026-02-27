@@ -97,6 +97,10 @@ pub enum CalloutType {
     Word,
     #[strum(to_string = "conjugation", serialize = "활용", props(ko = "활용"))]
     Conjugation,
+    #[strum(to_string = "phonetics", serialize = "음성학", props(ko = "음성학"))]
+    Phonetics,
+    #[strum(to_string = "picture", serialize = "그림", props(ko = "그림"))]
+    Picture,
 }
 
 impl CalloutType {

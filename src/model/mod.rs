@@ -2,12 +2,14 @@ mod basic;
 // mod rule;
 // mod word;
 
-use crate::anki_connect::models_client::params::CreateModel;
 use crate::anki_connect::note::NoteId;
 use crate::anki_connect::notes_client::params as notes_params;
 use crate::anki_connect::notes_client::params::AddNoteNote;
 use crate::callout::Callout;
 use crate::note_operation::NoteOperation;
+use crate::{
+    anki_connect::models_client::params::CreateModel, callout::callout_type::SupportedLanguages,
+};
 
 use basic::Basic;
 // use rule::Rule;
@@ -40,7 +42,7 @@ pub trait InternalModelMethods<'a>: Debug + Default {
     fn from_callout(
         &self,
         callout: &Callout,
-        header_lang: Option<&str>,
+        header_lang: &SupportedLanguages,
         deck_name: &'a str,
     ) -> Self;
     fn to_create_model(&self, model_name: &'a str, css: Option<&'a str>) -> CreateModel<'a>;

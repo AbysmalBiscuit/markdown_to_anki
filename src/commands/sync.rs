@@ -134,7 +134,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     let model_name = args
         .model_name
         .unwrap_or_else(|| format!("md2anki {}", &model_type_name));
-    let header_lang: Option<String> = Some(args.header_lang.clone().unwrap().to_string());
+    let header_lang = args.header_lang;
     let input_dir = &args.input_dir;
 
     let mut step = Step::new(1, 10);
@@ -388,7 +388,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .par_iter()
             .map(|deck| {
                 deck.callouts.par_iter().map(|callout| {
-                    model_type.from_callout(&callout, header_lang.as_deref(), &deck.qualified_name)
+                    model_type.from_callout(callout, &header_lang, &deck.qualified_name)
                 })
             })
             .flatten()

@@ -1,5 +1,15 @@
 use strum::{Display, EnumProperty, EnumString};
 
+#[derive(
+    Debug, Default, Display, EnumString, EnumProperty, clap::ValueEnum, Clone, PartialEq, Eq,
+)]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
+pub enum SupportedLanguages {
+    #[default]
+    EN,
+    KO,
+}
+
 #[derive(Debug, Default, Display, EnumString, EnumProperty, PartialEq, Eq)]
 #[strum(serialize_all = "kebab-case", ascii_case_insensitive)]
 pub enum CalloutType {
@@ -90,9 +100,9 @@ pub enum CalloutType {
 }
 
 impl CalloutType {
-    pub fn get_name(&self, lang_iso: Option<&str>) -> String {
+    pub fn get_name(&self, lang_iso: &SupportedLanguages) -> String {
         let default = &self.to_string();
-        let name: &str = lang_iso.map_or(default, |lang| self.get_str(lang).unwrap_or(default));
+        let name: &str = self.get_str(&lang_iso.to_string()).unwrap_or(default);
         name.split('-')
             .map(|part| {
                 let mut chars = part.chars();

@@ -7,6 +7,7 @@ use crate::{
             UpdateNoteFieldsNote,
         },
     },
+    callout::callout_type::SupportedLanguages,
     note_operation::NoteOperation,
 };
 use std::{borrow::Cow, collections::HashMap};
@@ -31,7 +32,7 @@ impl<'a> InternalModelMethods<'a> for Basic<'a> {
     fn from_callout(
         &self,
         callout: &Callout,
-        header_lang: Option<&str>,
+        header_lang: &SupportedLanguages,
         deck_name: &'a str,
     ) -> Self {
         Basic {

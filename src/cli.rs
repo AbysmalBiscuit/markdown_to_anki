@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 
+use crate::callout::callout_type::SupportedLanguages;
+
 #[derive(Debug, Parser)]
 #[command(name = "md2anki")]
 #[command(about="Convert markdown callout notes to Anki flashcards", long_about = None)]
@@ -61,8 +63,8 @@ pub struct SyncArgs {
 
     /// 2 letter language code (ISO 639-1) to use for callout names.
     /// Falls back to English (en) if not specified or not supported.
-    #[arg(short = 'l', long = "lang", default_value = "en")]
-    pub header_lang: Option<String>,
+    #[arg(short = 'l', long = "lang", default_value_t = SupportedLanguages::EN)]
+    pub header_lang: SupportedLanguages,
 
     /// Input path used to search for notes
     // #[arg()]

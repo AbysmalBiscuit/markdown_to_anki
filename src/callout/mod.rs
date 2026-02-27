@@ -12,6 +12,7 @@ use std::fmt::Display;
 use std::fs::read_to_string;
 use std::path::Path;
 
+use crate::callout::callout_type::SupportedLanguages;
 use crate::note_operation::NoteOperation;
 
 #[derive(Debug)]
@@ -107,7 +108,7 @@ impl Callout {
         (callouts, failed).into()
     }
 
-    pub fn content_to_html(&self, header_lang: Option<&str>) -> String {
+    pub fn content_to_html(&self, header_lang: &SupportedLanguages) -> String {
         if self.content.is_empty() {
             return "".to_string();
         }
@@ -128,7 +129,7 @@ impl Callout {
                             .get(*index)
                             .and_then(|sub_callout| match sub_callout.callout_type {
                                 CalloutType::Links => None,
-                                _ => Some(sub_callout.to_html(header_lang)),
+                                _ => Some(sub_callout.to_html(&header_lang)),
                             })
                             .unwrap_or("".into()),
                     )
@@ -143,9 +144,9 @@ impl Callout {
         content.join("\n")
     }
 
-    pub fn to_html(&self, header_lang: Option<&str>) -> String {
+    pub fn to_html(&self, header_lang: &SupportedLanguages) -> String {
         let header = if self.header.is_empty() {
-            self.callout_type.get_name(header_lang)
+            self.callout_type.get_name(&header_lang)
         } else {
             self.header.clone()
         };
@@ -154,7 +155,7 @@ impl Callout {
             r#"<details data-callout="{0}" class="callout"><summary class="callout-title"><div class="callout-icon"></div>{1}</summary>{2}</details>"#,
             self.callout_type,
             header,
-            self.content_to_html(header_lang)
+            self.content_to_html(&header_lang)
         )
     }
 
@@ -163,7 +164,7 @@ impl Callout {
             "<pre>\nSTART\n{}\n{}\nBack: {}\nEND\n</pre>",
             card_type.unwrap_or("Basic"),
             self.header,
-            self.content_to_html(None)
+            self.content_to_html(&SupportedLanguages::default())
         )
     }
 }

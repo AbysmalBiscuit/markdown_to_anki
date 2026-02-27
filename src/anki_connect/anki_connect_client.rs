@@ -95,7 +95,6 @@ impl AnkiConnectClient {
         R: DeserializeOwned + std::fmt::Debug,
     {
         self.request::<Vec<R>, _>("multi", Some(params::Multi::new(actions)))
-            .map(|response| response.result.unwrap())
     }
 }
 

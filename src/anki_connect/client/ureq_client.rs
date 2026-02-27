@@ -37,7 +37,7 @@ impl ClientBehavior for UreqClient {
         action: &str,
         params: Option<P>,
         timeout: Option<u8>,
-    ) -> Result<Response<R>, APIError>
+    ) -> Result<R, APIError>
     where
         R: DeserializeOwned + std::fmt::Debug,
         P: Serialize + std::fmt::Debug,
@@ -58,7 +58,9 @@ impl ClientBehavior for UreqClient {
                 if let Some(err) = response.error {
                     Err(APIError::AnkiConnectError(err))
                 } else {
-                    Ok(response)
+                    response
+                        .result
+                        .ok_or(APIError::AnkiConnectError("empty result".into()))
                 }
             }
             Err(err) => {
@@ -68,7 +70,7 @@ impl ClientBehavior for UreqClient {
         }
     }
 
-    fn request<R, P>(&self, action: &str, params: Option<P>) -> Result<Response<R>, APIError>
+    fn request<R, P>(&self, action: &str, params: Option<P>) -> Result<R, APIError>
     where
         R: DeserializeOwned + std::fmt::Debug,
         P: Serialize + std::fmt::Debug,
@@ -87,7 +89,9 @@ impl ClientBehavior for UreqClient {
                 if let Some(err) = response.error {
                     Err(APIError::AnkiConnectError(err))
                 } else {
-                    Ok(response)
+                    response
+                        .result
+                        .ok_or(APIError::AnkiConnectError("empty result".into()))
                 }
             }
             Err(err) => {

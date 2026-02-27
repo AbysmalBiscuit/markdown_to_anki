@@ -10,24 +10,26 @@ pub struct Response<R: Debug> {
     pub error: Option<String>,
 }
 
-impl<R: Debug> From<Result<R, APIError>> for Response<R> {
+impl<R> From<Result<R, APIError>> for Response<R>
+where
+    R: Debug,
+{
     fn from(value: Result<R, APIError>) -> Self {
-        if value.is_ok() {
-            Self {
-                result: Some(value.unwrap()),
+        match value {
+            Ok(v) => Self {
+                result: Some(v),
                 error: None,
-            }
-        } else {
-            Self {
+            },
+            Err(err) => Self {
                 result: None,
-                error: Some(value.unwrap_err().to_string()),
-            }
+                error: Some(err.to_string()),
+            },
         }
     }
 }
 
 impl<R: Debug> Display for Response<R> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", &self)
+        write!(f, "{self:?}")
     }
 }

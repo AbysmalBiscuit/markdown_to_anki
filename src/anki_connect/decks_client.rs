@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use super::{
     AnkiConnectClient, card::CardId, client::ClientBehavior, deck::DeckId, error::APIError,
-    response::Response,
 };
 
 use rayon::prelude::*;
@@ -14,23 +13,19 @@ pub struct DecksClient<'a>(pub &'a AnkiConnectClient);
 impl DecksClient<'_> {
     /// Gets the complete list of deck names for the current user.
     pub fn deck_names(&self) -> Result<Vec<String>, APIError> {
-        let response: Response<Vec<String>> = self.0.request("deckNames", None::<()>)?;
-        Ok(response.result.unwrap())
+        self.0.request("deckNames", None::<()>)
     }
 
     /// Gets the complete list of deck names and their respective IDs for the current user.
     pub fn deck_names_and_ids(&self) -> Result<HashMap<String, DeckId>, APIError> {
-        let response: Response<HashMap<String, DeckId>> =
-            self.0.request("deckNamesAndIds", None::<()>)?;
-        Ok(response.result.unwrap())
+        self.0.request("deckNamesAndIds", None::<()>)
     }
 
     pub fn find_deck_id_by_name(&self, name: &str) -> Result<DeckId, APIError> {
         let decks = self.deck_names_and_ids()?;
-        match decks.get(name) {
-            Some(id) => Ok(id.to_owned()),
-            None => Err(APIError::DeckNotFound),
-        }
+        decks
+            .get(name)
+            .map_or_else(|| Err(APIError::DeckNotFound), |id| Ok(id.to_owned()))
     }
 
     /// Accepts an array of card IDs and returns an object with each deck name as a key, and its value an array of the given cards which belong to it.
@@ -40,14 +35,12 @@ impl DecksClient<'_> {
     ) -> Result<HashMap<String, Vec<CardId>>, APIError> {
         self.0
             .request("getDecks", Some(params::GetDecks::new(cards)))
-            .map(|result| result.result.unwrap())
     }
 
     /// Create a new empty deck. Will not overwrite a deck that exists with the same name.
     pub fn create_deck(&self, deck_name: &str) -> Result<DeckId, APIError> {
         self.0
             .request("createDeck", Some(params::CreateDeck::new(deck_name)))
-            .map(|response| response.result.unwrap())
     }
 
     pub fn find_or_create_deck(&self, deck_name: &str) -> Result<DeckId, APIError> {

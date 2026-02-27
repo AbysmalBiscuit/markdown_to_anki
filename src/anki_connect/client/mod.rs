@@ -1,5 +1,5 @@
 use super::AnkiConnectClient;
-use super::{error::APIError, response::Response};
+use super::error::APIError;
 use enum_dispatch::enum_dispatch;
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -10,11 +10,11 @@ pub trait ClientBehavior {
         action: &str,
         params: Option<P>,
         timeout: Option<u8>,
-    ) -> Result<Response<R>, APIError>
+    ) -> Result<R, APIError>
     where
         R: DeserializeOwned + std::fmt::Debug,
         P: Serialize + std::fmt::Debug;
-    fn request<R, P>(&self, action: &str, params: Option<P>) -> Result<Response<R>, APIError>
+    fn request<R, P>(&self, action: &str, params: Option<P>) -> Result<R, APIError>
     where
         R: DeserializeOwned + std::fmt::Debug,
         P: Serialize + std::fmt::Debug;

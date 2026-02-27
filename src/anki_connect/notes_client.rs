@@ -1,8 +1,6 @@
 use crate::model::{InternalModelMethods, ModelType};
 
-use super::{
-    AnkiConnectClient, client::ClientBehavior, error::APIError, note::NoteId, response::Response,
-};
+use super::{AnkiConnectClient, client::ClientBehavior, error::APIError, note::NoteId};
 
 use rayon::prelude::*;
 
@@ -12,17 +10,13 @@ pub struct NotesClient<'a>(pub &'a AnkiConnectClient);
 impl NotesClient<'_> {
     /// Returns an array of note IDs for a given query.
     pub fn find_notes(&self, query: &str) -> Result<Vec<NoteId>, APIError> {
-        let response: Response<Vec<NoteId>> = self
-            .0
-            .request("findNotes", Some(params::FindNotes::new(query)))?;
-        Ok(response.result.unwrap())
+        self.0
+            .request("findNotes", Some(params::FindNotes::new(query)))
     }
 
     /// Gets ids of all notes stored in a deck based on deck_name.
     pub fn find_notes_ids_by_deck_name(&self, deck_name: &str) -> Result<Vec<NoteId>, APIError> {
-        let notes = self.find_notes(&format!("deck:{}", deck_name))?;
-
-        Ok(notes)
+        self.find_notes(&format!("deck:{deck_name}"))
     }
 
     /// Creates a note using the given deck and model, with the provided field values and tags.
@@ -53,7 +47,6 @@ impl NotesClient<'_> {
     pub fn add_note(&self, add_note: params::AddNoteNote) -> Result<NoteId, APIError> {
         self.0
             .request("addNote", Some(params::AddNote::new(add_note)))
-            .map(|result| result.result.unwrap())
     }
 
     // pub fn add_note_from_model_type(&self, note: &ModelType, ) -> Result<NoteId, APIError> {
@@ -65,9 +58,7 @@ impl NotesClient<'_> {
     /// If errors occur, then no notes are added and instead a string representing a Python list
     /// describing all errors is returned.
     pub fn add_notes(&self, notes: params::AddNotes) -> Result<Vec<NoteId>, APIError> {
-        self.0
-            .request("addNotes", Some(notes))
-            .map(|result| result.result.unwrap())
+        self.0.request("addNotes", Some(notes))
     }
 
     pub fn add_notes_convenience(
@@ -124,28 +115,26 @@ impl NotesClient<'_> {
     ) -> Result<Vec<responses::NoteInfo>, APIError> {
         self.0
             .request("notesInfo", Some(params::NotesInfoIds::new(ids)))
-            .map(|response| response.result.unwrap())
     }
 
     pub fn notes_info_by_query(&self, query: &str) -> Result<Vec<responses::NoteInfo>, APIError> {
         self.0
             .request("notesInfo", Some(params::NotesInfoQuery::new(query)))
-            .map(|response| response.result.unwrap())
     }
 
-    /// Gets ids of all notes stored in a deck based on deck_name.
+    /// Gets ids of all notes stored in a deck based on `deck_name`.
     pub fn get_notes_by_deck_name(
         &self,
         deck_name: &str,
     ) -> Result<Vec<responses::NoteInfo>, APIError> {
-        self.notes_info_by_query(&format!("deck:{}", deck_name))
+        self.notes_info_by_query(&format!("deck:{deck_name}"))
     }
 
     /// Deletes notes with the given ids. If a note has several cards associated with it, all associated cards will be deleted.
     pub fn delete_notes(&self, notes: &Vec<&NoteId>) -> Result<bool, APIError> {
         self.0
             .request::<(), _>("deleteNotes", Some(params::DeleteNotes::new(notes)))
-            .map(|_| true)
+            .map(|()| true)
     }
 
     #[inline]

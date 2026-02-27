@@ -47,3 +47,15 @@ command = ["cargo", "run", "--", "sync", "help"]
 need_stdout = true
 allow_failures = true
 allow_warnings = true
+
+[jobs.nag]
+command = ["cargo", "nag"]
+need_stdout = true
+allow_failures = true
+allow_warnings = true
+
+[jobs.missing-docs]
+command = ["cargo", "clippy", "--", "-W", "missing_docs"]
+need_stdout = true
+allow_failures = true
+allow_warnings = true

@@ -14,6 +14,7 @@ use super::client::ReqwestClient;
 #[cfg(feature = "ureq_blocking")]
 use super::client::UreqClient;
 
+/// `AnkiConnect` API client
 #[derive(Debug, Clone, Display, EnumString)]
 #[enum_dispatch(ClientBehavior)]
 pub enum AnkiConnectClient {
@@ -24,6 +25,7 @@ pub enum AnkiConnectClient {
 }
 
 impl AnkiConnectClient {
+    /// Creates a new [`AnkiConnectClient`].
     pub fn new(url: Option<&str>, port: Option<u32>) -> Self {
         #[cfg(all(feature = "reqwest_blocking", not(feature = "ureq_blocking")))]
         {
@@ -40,22 +42,31 @@ impl AnkiConnectClient {
     }
 
     #[allow(unused)]
+    /// Returns the cards of this [`AnkiConnectClient`].
     pub const fn cards(&self) -> CardsClient<'_> {
         CardsClient(self)
     }
 
+    /// Returns the decks of this [`AnkiConnectClient`].
     pub const fn decks(&self) -> DecksClient<'_> {
         DecksClient(self)
     }
 
+    /// Returns the models of this [`AnkiConnectClient`].
     pub const fn models(&self) -> ModelsClient<'_> {
         ModelsClient(self)
     }
 
+    /// Returns the notes of this [`AnkiConnectClient`].
     pub const fn notes(&self) -> NotesClient<'_> {
         NotesClient(self)
     }
 
+    /// Tests if [`AnkiConnectClient`] can connect to Anki.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if it failes to connect to Anki with an unknown error.
     pub fn test_connection(&self) -> Result<bool, APIError> {
         match self
             .request_with_timeout::<params::TestConnectionParams, params::TestConnectionParams>(
@@ -74,6 +85,11 @@ impl AnkiConnectClient {
         }
     }
 
+    /// Performs multiple actions in one request, returning an array with the response of each action (in the given order).
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if an unknown error occurs.
     pub fn multi<P, R>(&self, actions: Vec<&params::Action<P>>) -> Result<Vec<R>, APIError>
     where
         P: Serialize + std::fmt::Debug,

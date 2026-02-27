@@ -5,13 +5,17 @@ use crate::anki_connect::{error::APIError, params::Params, response::Response};
 use serde::{Serialize, de::DeserializeOwned};
 use ureq::Agent;
 
+/// Ureq implementation of [`ClientBehavior`].
 #[derive(Debug, Clone)]
 pub struct UreqClient {
+    /// [`ureq`] state [`Agent`].
     agent: Agent,
+    /// `AnkiConnect` URL to which requsets will be made.
     url: String,
 }
 
 impl UreqClient {
+    /// Creates a new [`UreqClient`].
     pub fn new(url: Option<&str>, port: Option<u32>) -> Self {
         let config = Agent::config_builder()
             .timeout_global(Some(Duration::from_secs(5)))

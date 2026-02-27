@@ -60,6 +60,9 @@ impl TryFrom<Vec<&str>> for Callout {
 
 impl TryFrom<&Vec<&str>> for Callout {
     type Error = CalloutError;
+
+    // TODO: split the function into several pieces to make it easier to maintain.
+    #[allow(clippy::too_many_lines)]
     fn try_from(value: &Vec<&str>) -> Result<Self, Self::Error> {
         let content_length = (value.len() + 1).max(3);
         let mut value_iter = value.iter();

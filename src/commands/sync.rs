@@ -129,6 +129,8 @@ fn create_missing_decks(
     }
 }
 
+// TODO: split the function into several pieces to make it easier to maintain.
+#[allow(clippy::too_many_lines)]
 pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Extract args into variables
     let parent_deck = args.deck.unwrap_or_default();

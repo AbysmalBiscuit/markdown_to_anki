@@ -2,10 +2,12 @@ use super::{
     AnkiConnectClient, client::ClientBehavior, error::APIError, model::Model, response::Response,
 };
 
+/// Performs Model actions.
 #[derive(Debug, Clone)]
 pub struct ModelsClient<'a>(pub &'a AnkiConnectClient);
 
 impl ModelsClient<'_> {
+    /// Modify the CSS styling of an existing model by name.
     pub fn update_model_styling(
         &self,
         model_name: &str,
@@ -19,11 +21,13 @@ impl ModelsClient<'_> {
         )
     }
 
+    /// Gets the complete list of model names for the current user.
     pub fn get_all_names(&self) -> Result<Vec<String>, APIError> {
         let response: Response<Vec<String>> = self.0.request("modelNames", None::<()>)?;
         Ok(response.result.unwrap())
     }
 
+    /// Gets a list of models for the provided model names from the current user.
     pub fn find_by_name(&self, model_names: Vec<&str>) -> Result<Vec<Model>, APIError> {
         let models = self.0.request::<Vec<Model>, _>(
             "findModelsByName",
@@ -32,6 +36,11 @@ impl ModelsClient<'_> {
         Ok(models.result.unwrap())
     }
 
+    /// Creates a new model to be used in Anki.
+    /// User must provide the modelName, inOrderFields and cardTemplates to be used in the model.
+    /// There are optional fields css and isCloze.
+    /// If not specified, css will use the default Anki css and isCloze will be equal to false.
+    /// If isCloze is true then model will be created as Cloze.
     pub fn create_model(&self, model: params::CreateModel) -> Result<Model, APIError> {
         self.0
             .request("createModel", Some(model))
@@ -39,6 +48,7 @@ impl ModelsClient<'_> {
     }
 }
 
+/// This module declares the request parameters for [`ModelsClient`] actions.
 pub mod params {
     use std::{borrow::Cow, collections::HashMap};
 

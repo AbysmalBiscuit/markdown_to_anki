@@ -100,6 +100,38 @@ struct OperationParams<'a> {
     notes_errors: Vec<(M2AnkiError, &'a ModelType<'a>)>,
 }
 
+fn create_missing_decks(
+    m: &MultiProgress,
+    step: &mut Step,
+    decks: &Vec<Deck>,
+    client: &AnkiConnectClient,
+) {
+    // Get all decks to filter
+    let existing_decks = client.decks().deck_names().unwrap_or_default();
+
+    // Filter found decks
+    let decks_to_create: Vec<String> = decks
+        .par_iter()
+        .filter_map(|deck| {
+            let name = deck.qualified_name.clone();
+            if existing_decks.contains(&name) {
+                return None;
+            }
+            Some(name)
+        })
+        .collect();
+
+    if !decks_to_create.is_empty() {
+        m.suspend(|| {
+            step.print_step(Some("Creating new decks"), Some(PLUS));
+        });
+        // Only create new decks
+        for deck_name in decks_to_create {
+            let _ = client.decks().create_deck(&deck_name);
+        }
+    }
+}
+
 pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Extract args into variables
     let parent_deck = args.deck.unwrap().to_string();
@@ -467,6 +499,10 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Add new notes
     m.suspend(|| {
         step.print_step(Some("Syncing notes to Anki"), Some(SYNC));
+    });
+    create_missing_decks(&m, &mut step, &decks, &client);
+
+    m.suspend(|| {
         step.print_step(Some("Adding new notes"), Some(PLUS));
     });
     if !operation_params.add.is_empty() {

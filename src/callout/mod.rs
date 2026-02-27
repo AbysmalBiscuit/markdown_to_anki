@@ -1,7 +1,7 @@
-pub(crate) mod callout_type;
-pub(crate) mod content;
-pub(crate) mod error;
-pub(crate) mod try_from;
+pub mod callout_type;
+pub mod content;
+pub mod error;
+pub mod try_from;
 
 use callout_type::CalloutType;
 use content::CalloutContent;
@@ -23,7 +23,7 @@ pub struct ExtractCalloutsResult {
 
 impl From<(Vec<Callout>, Vec<(String, CalloutError)>)> for ExtractCalloutsResult {
     fn from(value: (Vec<Callout>, Vec<(String, CalloutError)>)) -> Self {
-        ExtractCalloutsResult {
+        Self {
             callouts: value.0,
             failed: value.1,
         }
@@ -34,24 +34,24 @@ impl From<(Vec<Callout>, Vec<(String, CalloutError)>)> for ExtractCalloutsResult
 pub struct Callout {
     pub markdown_id: String,
     pub operation: NoteOperation,
-    pub callout_type: CalloutType,
+    pub type_: CalloutType,
     pub header: String,
     pub content: Vec<CalloutContent>,
-    pub sub_callouts: Vec<Callout>,
+    pub sub_callouts: Vec<Self>,
 }
 
 impl Callout {
-    pub fn new(
+    pub const fn new(
         markdown_id: String,
         callout_type: CalloutType,
         header: String,
         content: Vec<CalloutContent>,
-        sub_callouts: Vec<Callout>,
-    ) -> Callout {
-        Callout {
+        sub_callouts: Vec<Self>,
+    ) -> Self {
+        Self {
             markdown_id,
             operation: NoteOperation::Nop,
-            callout_type,
+            type_: callout_type,
             header,
             content,
             sub_callouts,
@@ -64,7 +64,7 @@ impl Callout {
             Err(err) => {
                 return ExtractCalloutsResult::from((
                     vec![],
-                    vec![("".to_string(), CalloutError::Io(err))],
+                    vec![(String::new(), CalloutError::Io(err))],
                 ));
             }
         };
@@ -73,21 +73,21 @@ impl Callout {
             .skip(1)
             .collect::<Vec<_>>()
             .into_par_iter()
-            .map(|block| block.trim())
+            .map(str::trim)
             .filter(|block| {
                 !block.is_empty() // && (block.starts_with("word") || block.starts_with("rule"))
             })
-            .map(|block| format!("> [!{}", block))
+            .map(|block| format!("> [!{block}"))
             .collect();
 
-        let (callouts, failed): (Vec<Callout>, Vec<(String, CalloutError)>) =
+        let (callouts, failed): (Vec<Self>, Vec<(String, CalloutError)>) =
             blocks.into_par_iter().partition_map(|block| {
                 let block = block
                     .par_split('\n')
                     .filter(|line| line.starts_with('>'))
                     .collect::<Vec<_>>();
-                match Callout::try_from(&block) {
-                    Ok(callout) => match callout.callout_type {
+                match Self::try_from(&block) {
+                    Ok(callout) => match callout.type_ {
                         CalloutType::Word | CalloutType::Rule => {
                             if callout.markdown_id.is_empty() {
                                 Either::Right((block.join("\n"), CalloutError::NoMarkdownID))
@@ -95,7 +95,7 @@ impl Callout {
                                 Either::Left(callout)
                             }
                         }
-                        _ => Either::Right(("".to_string(), CalloutError::NotFlashcardCompatible)),
+                        _ => Either::Right((String::new(), CalloutError::NotFlashcardCompatible)),
                     },
                     Err(err) => Either::Right((block.join("\n"), err)),
                 }
@@ -110,7 +110,7 @@ impl Callout {
 
     pub fn content_to_html(&self, header_lang: &SupportedLanguages) -> String {
         if self.content.is_empty() {
-            return "".to_string();
+            return String::new();
         }
 
         let mut content: Vec<String> = Vec::with_capacity(self.content.len());
@@ -127,12 +127,12 @@ impl Callout {
                     content.push(
                         self.sub_callouts
                             .get(*index)
-                            .and_then(|sub_callout| match sub_callout.callout_type {
+                            .and_then(|sub_callout| match sub_callout.type_ {
                                 CalloutType::Links => None,
-                                _ => Some(sub_callout.to_html(&header_lang)),
+                                _ => Some(sub_callout.to_html(header_lang)),
                             })
-                            .unwrap_or("".into()),
-                    )
+                            .unwrap_or(String::new()),
+                    );
                 }
             }
         }
@@ -146,16 +146,16 @@ impl Callout {
 
     pub fn to_html(&self, header_lang: &SupportedLanguages) -> String {
         let header = if self.header.is_empty() {
-            self.callout_type.get_name(&header_lang)
+            self.type_.get_name(header_lang)
         } else {
             self.header.clone()
         };
 
         format!(
             r#"<details data-callout="{0}" class="callout"><summary class="callout-title"><div class="callout-icon"></div>{1}</summary>{2}</details>"#,
-            self.callout_type,
+            self.type_,
             header,
-            self.content_to_html(&header_lang)
+            self.content_to_html(header_lang),
         )
     }
 
@@ -171,6 +171,6 @@ impl Callout {
 
 impl Display for Callout {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self,)
+        write!(f, "{self:?}")
     }
 }

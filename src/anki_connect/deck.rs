@@ -64,9 +64,9 @@ impl From<Vec<Value>> for TodayAmountSchema11 {
     fn from(mut v: Vec<Value>) -> Self {
         let amt = v.pop().and_then(|v| v.as_i64()).unwrap_or(0);
         let day = v.pop().and_then(|v| v.as_i64()).unwrap_or(0);
-        TodayAmountSchema11 {
-            amount: amt as i32,
-            day: day as i32,
+        Self {
+            amount: i32::try_from(amt).unwrap_or(0),
+            day: i32::try_from(day).unwrap_or(0),
         }
     }
 }

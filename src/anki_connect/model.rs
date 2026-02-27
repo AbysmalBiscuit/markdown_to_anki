@@ -60,6 +60,7 @@ pub struct Field {
 pub struct Media {
     source: String,
     filename: String,
+    #[allow(clippy::struct_field_names)]
     media_type: MediaType,
 }
 
@@ -90,10 +91,10 @@ pub enum NotetypeKind {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub(crate) struct CardRequirementsSchema11(pub(crate) Vec<CardRequirementSchema11>);
+pub struct CardRequirementsSchema11(pub(crate) Vec<CardRequirementSchema11>);
 
 #[derive(Serialize_tuple, Deserialize, Debug, Clone)]
-pub(crate) struct CardRequirementSchema11 {
+pub struct CardRequirementSchema11 {
     pub(crate) card_ord: u16,
     pub(crate) kind: FieldRequirementKindSchema11,
     pub(crate) field_ords: Vec<u16>,

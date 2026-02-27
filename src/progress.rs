@@ -19,8 +19,9 @@ pub static REPEAT: Emoji<'_, '_> = Emoji("⟳  ", "X");
 pub static BAR_CHART: Emoji<'_, '_> = Emoji("📊  ", "X");
 
 pub static SPINNER_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
     ProgressStyle::with_template("{prefix:.bold.dim} {spinner} {wide_msg}")
-        .unwrap()
+        .expect("premade progress style should not panic")
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
 });
 
@@ -52,7 +53,7 @@ pub fn print_step(
 ) {
     println!(
         "{0} {1}{2}",
-        style(format!("[{}/{}]", step_num, step_max)).bold().dim(),
+        style(format!("[{step_num}/{step_max}]")).bold().dim(),
         emoji.unwrap_or(Emoji("", "")),
         message.unwrap_or("")
     );

@@ -5,6 +5,7 @@ use crate::Callout;
 use regex::Regex;
 use std::sync::LazyLock;
 
+/// Regex used for matching callout headers.
 static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
     const CJK_CHARACTER_RANGES: &str = concat!(
         r"\u2E80-\u2FD5",
@@ -39,34 +40,21 @@ static RE_HEADER: LazyLock<Regex> = LazyLock::new(|| {
         r"\u0180-\u024F",
     );
     const IPA: &str = r"\u0250–\u02AF";
-    let first_match = format!(
-        r"{cjk_character_ranges}{cjk_punctuation}{punctuation}{english}{numbers}",
-        cjk_character_ranges = CJK_CHARACTER_RANGES,
-        cjk_punctuation = CJK_PUNCTUATION,
-        punctuation = PUNCTUATION,
-        english = ENGLISH,
-        numbers = NUMBERS
-    );
-    let second_match = format!(
-        r"{english}{extra_latin}{ipa}",
-        english = ENGLISH,
-        extra_latin = EXTRA_LATIN,
-        ipa = IPA,
-    );
+    let first_match =
+        format!(r"{CJK_CHARACTER_RANGES}{CJK_PUNCTUATION}{PUNCTUATION}{ENGLISH}{NUMBERS}");
+    let second_match = format!(r"{ENGLISH}{EXTRA_LATIN}{IPA}");
     let pattern = format!(
-        r#"^(?:> )?> \[!(.+?)\][+-]? ?([{first_match_1}]+(?: [{first_match_2}]+)*)?(  [{second_match}]*)? *(.*?)?$"#,
-        first_match_1 = first_match,
-        first_match_2 = first_match,
-        second_match = second_match,
+        r"^(?:> )?> \[!(.+?)\][+-]? ?([{first_match}]+(?: [{first_match}]+)*)?(  [{second_match}]*)? *(.*?)?$"
     );
     // Regex::new(r#"^(?:> )?> \[!(.+?)\][+-]? ?([\u2E80-\u2FD5\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF5F-\uFF9FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\<>]+(?: [\u2E80-\u2FD5\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3131-\u3132\u3132-\u3134\u3134-\u3137\u3137-\u3139\u3139-\u3141\u3141-\u3142\u3142-\u3145\u3145-\u3146\u3146-\u3147\u3147-\u3148\u3148-\u314A\u314A-\u314B\u314B-\u314C\u314C-\u314D\u314D-\u314E\u314E-\u3163\u31F0-\u31FF\u3220-\u3243\u3280-\u337F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF5F-\uFF9FA-Za-z0-9.,?!'"()\[\]{}\-+|*_/\\<>]+)*)?(  [A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏ ]*)? *(.*?)?$"#).unwrap()
-    Regex::new(&pattern).unwrap()
+    #[allow(clippy::expect_used)]
+    Regex::new(&pattern).expect("hardcoded regex is invalid")
 });
 
 impl TryFrom<Vec<&str>> for Callout {
     type Error = CalloutError;
     fn try_from(value: Vec<&str>) -> Result<Self, Self::Error> {
-        Callout::try_from(&value)
+        Self::try_from(&value)
     }
 }
 
@@ -76,10 +64,9 @@ impl TryFrom<&Vec<&str>> for Callout {
         let content_length = (value.len() + 1).max(3);
         let mut value_iter = value.iter();
 
-        let header_line = match value_iter.next() {
-            Some(line) => line,
-            None => panic!("{:?}", CalloutError::EmptyString),
-        };
+        let header_line = value_iter
+            .next()
+            .unwrap_or_else(|| panic!("{:?}", CalloutError::EmptyString));
 
         let caps = RE_HEADER
             .captures(header_line)
@@ -109,7 +96,7 @@ impl TryFrom<&Vec<&str>> for Callout {
         }
 
         let mut markdown_id: &str = "";
-        let mut sub_callouts: Vec<Callout> = Vec::with_capacity(content_length);
+        let mut sub_callouts: Vec<Self> = Vec::with_capacity(content_length);
         let mut prev: &str = "";
         let mut line: &str;
         let mut next: &str = "";
@@ -129,12 +116,12 @@ impl TryFrom<&Vec<&str>> for Callout {
                 ));
                 prev = "";
             }
-            if !next.is_empty() {
-                line = next;
-                next = "";
-            } else {
+            if next.is_empty() {
                 line = *value_iter.next().unwrap_or(&"");
                 next = *value_iter.next().unwrap_or(&"");
+            } else {
+                line = next;
+                next = "";
             }
 
             if line.is_empty() {
@@ -160,12 +147,12 @@ impl TryFrom<&Vec<&str>> for Callout {
                     sub_callout_vector
                         .push(next_line.strip_prefix(">").unwrap_or(next_line).trim());
                 }
-                let sub_callout: Callout = sub_callout_vector.try_into()?;
+                let sub_callout: Self = sub_callout_vector.try_into()?;
                 if !(sub_callout.content.is_empty()
                     || (sub_callout.content.len() == 1
                         && match &sub_callout.content[0] {
                             CalloutContent::Text(text) => text.is_empty(),
-                            _ => false,
+                            CalloutContent::SubCalloutIndex(_) => false,
                         }))
                 {
                     sub_callouts.push(sub_callout);
@@ -203,7 +190,7 @@ impl TryFrom<&Vec<&str>> for Callout {
             }
         }
 
-        Ok(Callout::new(
+        Ok(Self::new(
             markdown_id.into(),
             callout_type,
             header,

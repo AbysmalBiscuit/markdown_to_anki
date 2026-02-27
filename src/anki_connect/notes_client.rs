@@ -14,7 +14,7 @@ impl NotesClient<'_> {
             .request("findNotes", Some(params::FindNotes::new(query)))
     }
 
-    /// Gets ids of all notes stored in a deck based on deck_name.
+    /// Gets ids of all notes stored in a deck based on `deck_name`.
     pub fn find_notes_ids_by_deck_name(&self, deck_name: &str) -> Result<Vec<NoteId>, APIError> {
         self.find_notes(&format!("deck:{deck_name}"))
     }
@@ -65,12 +65,12 @@ impl NotesClient<'_> {
         &self,
         deck_name: &str,
         model_name: &str,
-        notes: Vec<&ModelType>,
+        notes: &Vec<&ModelType>,
     ) -> Result<Vec<NoteId>, APIError> {
         self.add_notes(params::AddNotes::new(
             notes
                 .par_iter()
-                .map(|note| note.to_add_note(&deck_name, &model_name))
+                .map(|note| note.to_add_note(deck_name, model_name))
                 .collect(),
         ))
     }
@@ -82,18 +82,18 @@ impl NotesClient<'_> {
     pub fn update_note_fields(&self, note: params::UpdateNoteFields) -> Result<bool, APIError> {
         self.0
             .request::<(), _>("updateNoteFields", Some(note))
-            .map(|_| true)
+            .map(|()| true)
     }
 
     pub fn update_note(&self, params: params::UpdateNoteFields) -> Result<bool, APIError> {
         self.0
             .request::<(), _>("updateNote", Some(params))
-            .map(|_| true)
+            .map(|()| true)
     }
 
     pub fn update_note_from_model_type(
         &self,
-        id: &NoteId,
+        id: NoteId,
         note: &ModelType,
         tags: Option<&Vec<&str>>,
     ) -> Result<bool, APIError> {
@@ -170,6 +170,7 @@ pub mod params {
         notes: Vec<AddNoteNote<'a>>,
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
     pub struct AddNoteNote<'a> {
@@ -206,7 +207,7 @@ pub mod params {
         check_all_models: bool,
     }
 
-    fn default_duplicate_scope_options_deck_name<'a>() -> &'a str {
+    const fn default_duplicate_scope_options_deck_name<'a>() -> &'a str {
         "Default"
     }
 
@@ -239,7 +240,7 @@ pub mod params {
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
     pub struct UpdateNoteFieldsNote<'a> {
-        id: &'a NoteId,
+        id: NoteId,
         pub fields: HashMap<&'a str, &'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
         audio: Option<&'a Vec<MediaFile<'a>>>,
@@ -359,11 +360,11 @@ pub mod responses {
             let markdown_id = helper
                 .fields
                 .first()
-                .ok_or(serde::de::Error::custom("No MarkdownID field."))?
+                .ok_or_else(|| serde::de::Error::custom("No MarkdownID field."))?
                 .1
                 .clone();
 
-            Ok(NoteInfo {
+            Ok(Self {
                 markdown_id,
                 operation: NoteOperation::Nop,
                 note_id: helper.note_id,

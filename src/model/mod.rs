@@ -31,7 +31,7 @@ pub enum ModelType<'a> {
     // Word(Word),
 }
 
-impl<'a> Default for ModelType<'a> {
+impl Default for ModelType<'_> {
     fn default() -> Self {
         ModelType::Basic(Basic::default())
     }
@@ -39,7 +39,7 @@ impl<'a> Default for ModelType<'a> {
 
 #[enum_dispatch]
 pub trait InternalModelMethods<'a>: Debug + Default {
-    fn from_callout(
+    fn create_model_from_callout(
         &self,
         callout: &Callout,
         header_lang: &SupportedLanguages,

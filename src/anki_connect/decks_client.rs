@@ -65,7 +65,10 @@ impl DecksClient<'_> {
             .request::<Option<()>, _>(
                 "deleteDecks",
                 Some(params::DeleteDecks::new(
-                    decks.into_par_iter().map(|name| name.to_string()).collect(),
+                    decks
+                        .into_par_iter()
+                        .map(std::string::ToString::to_string)
+                        .collect(),
                     true,
                 )),
             )

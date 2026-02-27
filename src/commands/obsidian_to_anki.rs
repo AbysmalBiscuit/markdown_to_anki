@@ -13,7 +13,7 @@ use rayon::prelude::*;
 
 pub fn create_markdown_anki_cards_file(
     input_dir: &PathBuf,
-    output_file_path: PathBuf,
+    output_file_path: &PathBuf,
 ) -> Result<(), M2AnkiError> {
     let max_step = 10;
     print_step(
@@ -27,7 +27,7 @@ pub fn create_markdown_anki_cards_file(
     if markdown_files.is_empty() {
         warn!(
             "Failed to find any markdown files in: '{}'",
-            input_dir.to_str().unwrap()
+            input_dir.to_str().ok_or(M2AnkiError::InvalidUtf8Path)?
         );
         return Ok(());
     }
@@ -51,7 +51,7 @@ pub fn create_markdown_anki_cards_file(
 
     info!("Found {} callouts", num_callouts);
 
-    let mut output_file = File::create(&output_file_path)?;
+    let mut output_file = File::create(output_file_path)?;
 
     let content = callouts
         .par_iter()
@@ -63,8 +63,10 @@ pub fn create_markdown_anki_cards_file(
 
     info!(
         "Wrote {} callouts to '{}'",
-        &num_callouts,
-        output_file_path.to_str().unwrap()
+        num_callouts,
+        output_file_path
+            .to_str()
+            .ok_or(M2AnkiError::InvalidUtf8Path)?
     );
 
     Ok(())

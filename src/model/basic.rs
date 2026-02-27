@@ -29,16 +29,16 @@ pub struct Basic<'a> {
 }
 
 impl<'a> InternalModelMethods<'a> for Basic<'a> {
-    fn from_callout(
+    fn create_model_from_callout(
         &self,
         callout: &Callout,
         header_lang: &SupportedLanguages,
         deck_name: &'a str,
     ) -> Self {
-        Basic {
-            deck_name: &deck_name,
+        Self {
+            deck_name,
             operation: callout.operation,
-            markdown_id: callout.markdown_id.to_owned(),
+            markdown_id: callout.markdown_id.clone(),
             front: callout.header.clone(),
             back: callout.content_to_html(header_lang),
         }
@@ -148,7 +148,7 @@ TTS W: {{tts ko_KR voices=com.samsung.SMT-ko-KR-SMTl01:Korean}}"#,
         field_values.insert("Front", self.front.as_str());
         field_values.insert("Back", self.back.as_str());
         UpdateNoteFields::new(UpdateNoteFieldsNote::new(
-            note_id,
+            *note_id,
             field_values,
             self.get_audio(),
             // None,

@@ -1,6 +1,7 @@
 // #![allow(unused)]
 // #[cfg(all(feature = "ureq_blocking", feature = "reqwest_blocking"))]
 // compile_error!("Only one of `ureq_blocking` or `reqwest_blocking` features can be enabled.");
+/// This module provides the API client for intercating with Anki through `AnkiConnect`.
 mod anki_connect;
 mod callout;
 mod cli;
@@ -39,6 +40,7 @@ fn main() -> Result<(), M2AnkiError> {
     let subscriber = FmtSubscriber::builder()
         .with_max_level(verbosity) // Or your desired level
         .finish();
+    #[allow(clippy::expect_used)]
     tracing::subscriber::set_global_default(subscriber)
         .expect("Failed to set global default subscriber");
 
@@ -48,11 +50,11 @@ fn main() -> Result<(), M2AnkiError> {
             output_file,
         } => {
             let output_file_path: PathBuf =
-                output_file.map_or_else(|| input_dir.join("Anki cards.md"), |p| p.to_path_buf());
-            create_markdown_anki_cards_file(&input_dir, output_file_path)?
+                output_file.unwrap_or_else(|| input_dir.join("Anki cards.md"));
+            create_markdown_anki_cards_file(&input_dir, &output_file_path)?;
         }
         Commands::Sync(sync_args) => match sync(sync_args) {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(err) => error!("{:?}", err),
         },
         // _ => unreachable!(),

@@ -1,10 +1,11 @@
+use crate::anki_connect;
 use crate::anki_connect::anki_connect_client::params::Action;
 use crate::anki_connect::anki_connect_client::response::BasicResponse;
 use crate::anki_connect::card::CardId;
 use crate::anki_connect::decks_client::params::ChangeDeck;
 use crate::anki_connect::notes_client::params::{AddNote, UpdateNoteFields};
 use crate::anki_connect::notes_client::responses::NoteInfo;
-use crate::anki_connect::{AnkiConnectClient, error::APIError, model::Model, note::NoteId};
+use crate::anki_connect::{AnkiConnectClient, error::APIError, note::NoteId};
 use crate::callout::Callout;
 use crate::cli::SyncArgs;
 use crate::deck::Deck;
@@ -31,6 +32,7 @@ use crate::progress::{
     BAR_CHART, CROSS, LOOKING_GLASS, PLUS, REPEAT, SHUFFLE, SPARKLE, SYNC, Step,
 };
 
+/// Stores statistics about how the synchronization with Anki went.
 #[derive(Debug)]
 struct SyncStats {
     added: u64,
@@ -224,12 +226,13 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         let css = if css_file.is_file() {
             read_to_string(css_file)
         } else {
-            Ok("".to_string())
+            Ok(String::new())
         };
 
         (decks, total_callouts, model_type, css)
     });
 
+    // Expect to receive 3 messages
     for _ in 0..3 {
         match rx.recv() {
             Ok(("client", false)) => {
@@ -241,35 +244,33 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             Ok(("md_files", false)) => {
                 warn!(
                     "Failed to find any markdown files in: '{}'",
-                    input_dir.to_str().unwrap()
+                    input_dir.to_str().unwrap_or_default()
                 );
                 return Ok(());
             }
             Ok(("num_callouts", false)) => {
                 warn!(
                     "No callouts found in any of the markdown files in: '{}'",
-                    input_dir.to_str().unwrap()
+                    input_dir.to_str().unwrap_or_default()
                 );
                 return Ok(());
             }
-            _ => continue,
+            _ => (),
         }
     }
 
-    client_handle
-        .join()
-        .map_err(|err| M2AnkiError::ThreadPanic(err))?;
+    client_handle.join().map_err(M2AnkiError::ThreadPanic)?;
     let (mut decks, total_callouts, model_type, css) = markdown_files_hadle
         .join()
-        .map_err(|err| M2AnkiError::ThreadPanic(err))?;
+        .map_err(M2AnkiError::ThreadPanic)?;
 
     let model_type = model_type?;
     let css = css?;
 
     let mut created_model = false;
 
-    let note_type: Model = match client.models().find_by_name(vec![&model_name]) {
-        Ok(models) => {
+    let note_type: anki_connect::model::Model =
+        if let Ok(models) = client.models().find_by_name(vec![&model_name]) {
             if models.is_empty() {
                 let new_model = client
                     .models()
@@ -277,17 +278,18 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                 created_model = true;
                 new_model
             } else {
-                models.first().unwrap().to_owned()
+                models
+                    .first()
+                    .ok_or(M2AnkiError::ModelFetchError(model_name.clone()))?
+                    .to_owned()
             }
-        }
-        Err(_) => {
+        } else {
             let new_model = client
                 .models()
                 .create_model(model_type.to_create_model(&model_name, Some(&css)))?;
             created_model = true;
             new_model
-        }
-    };
+        };
 
     if !css.is_empty() && !created_model {
         let _ = client
@@ -335,7 +337,11 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .par_iter()
             .map(|deck| {
                 deck.callouts.par_iter().map(|callout| {
-                    model_type.from_callout(callout, &header_lang, &deck.qualified_name)
+                    model_type.create_model_from_callout(
+                        callout,
+                        &header_lang,
+                        &deck.qualified_name,
+                    )
                 })
             })
             .flatten()
@@ -416,7 +422,11 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .par_iter()
             .map(|deck| {
                 deck.callouts.par_iter().map(|callout| {
-                    model_type.from_callout(callout, &header_lang, &deck.qualified_name)
+                    model_type.create_model_from_callout(
+                        callout,
+                        &header_lang,
+                        &deck.qualified_name,
+                    )
                 })
             })
             .flatten()
@@ -508,7 +518,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // decks_pbar.set_message("Decks");
 
     // Prepare stats and error tracking
-    let mut failed_notes: Vec<(PathBuf, Vec<(String, ModelType)>)> = Vec::new();
+    let failed_notes: Vec<(PathBuf, Vec<(String, ModelType)>)> = Vec::new();
     let mut sync_stats = SyncStats {
         added: 0,
         added_errors: 0,
@@ -548,7 +558,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             let _ = match client.multi::<AddNote, BasicResponse>(chunk.to_vec()) {
                 // TODO: parse response to collect detailed errors for individual actions
                 Ok(response) => {
-                    global_pbar.inc(response.len().try_into().unwrap());
+                    global_pbar.inc(response.len().try_into().unwrap_or_default());
                     let (success, fail): (Vec<&BasicResponse>, Vec<&BasicResponse>) =
                         response.par_iter().partition(|resp| resp.error.is_none());
                     sync_stats.added += success.len() as u64;
@@ -581,7 +591,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             let _ = match client.multi::<UpdateNoteFields, BasicResponse>(chunk.to_vec()) {
                 // TODO: parse response to collect detailed errors for individual actions
                 Ok(response) => {
-                    global_pbar.inc(response.len().try_into().unwrap());
+                    global_pbar.inc(response.len().try_into().unwrap_or_default());
                     let (success, fail): (Vec<&BasicResponse>, Vec<&BasicResponse>) =
                         response.par_iter().partition(|resp| resp.error.is_none());
                     sync_stats.updated += success.len() as u64;
@@ -612,7 +622,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             let _ = match client.multi::<ChangeDeck, BasicResponse>(chunk.to_vec()) {
                 // TODO: parse response to collect detailed errors for individual actions
                 Ok(response) => {
-                    global_pbar.inc(response.len().try_into().unwrap());
+                    global_pbar.inc(response.len().try_into().unwrap_or_default());
                     let (success, fail): (Vec<&BasicResponse>, Vec<&BasicResponse>) =
                         response.par_iter().partition(|resp| resp.error.is_none());
                     sync_stats.moved += success.len() as u64;
@@ -629,7 +639,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     if !operation_params.delete.is_empty() {
         let _ = client.notes().delete_notes(&operation_params.delete);
         sync_stats.deleted += operation_params.delete.len() as u64;
-        global_pbar.inc(operation_params.delete.len().try_into().unwrap());
+        global_pbar.inc(operation_params.delete.len().try_into().unwrap_or_default());
     }
 
     // TODO: find a way to delete empty decks

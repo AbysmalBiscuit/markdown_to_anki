@@ -1,16 +1,17 @@
-pub(crate) mod anki_connect_client;
-pub(crate) mod card;
-pub(crate) mod cards_client;
+#![allow(dead_code)]
+pub mod anki_connect_client;
+pub mod card;
+pub mod cards_client;
 mod client;
-pub(crate) mod deck;
-pub(crate) mod decks_client;
-pub(crate) mod error;
-pub(crate) mod model;
-pub(crate) mod models_client;
-pub(crate) mod note;
-pub(crate) mod notes_client;
+pub mod deck;
+pub mod decks_client;
+pub mod error;
+pub mod model;
+pub mod models_client;
+pub mod note;
+pub mod notes_client;
 mod params;
-pub(crate) mod response;
+pub mod response;
 mod util;
 
 pub use anki_connect_client::AnkiConnectClient;

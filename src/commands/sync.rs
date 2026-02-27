@@ -97,12 +97,7 @@ struct OperationParams<'a> {
     notes_errors: Vec<(M2AnkiError, &'a ModelType<'a>)>,
 }
 
-fn create_missing_decks(
-    m: &MultiProgress,
-    step: &mut Step,
-    decks: &Vec<Deck>,
-    client: &AnkiConnectClient,
-) {
+fn create_missing_decks(m: &MultiProgress, decks: &Vec<Deck>, client: &AnkiConnectClient) {
     // Get all decks to filter
     let existing_decks = client.decks().deck_names().unwrap_or_default();
 
@@ -119,11 +114,20 @@ fn create_missing_decks(
         .collect();
 
     if !decks_to_create.is_empty() {
-        m.suspend(|| {
-            step.print_step(Some("Creating new decks"), Some(PLUS));
-        });
-        // Only create new decks
+        #[allow(clippy::unwrap_used)]
+        let sty = ProgressStyle::with_template(
+            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
+        )
+        .unwrap()
+        .progress_chars("##-");
+        let pbar = m.add(ProgressBar::new(
+            decks_to_create.len().try_into().unwrap_or_default(),
+        ));
+        pbar.set_style(sty);
+        pbar.set_message("Creating decks");
+
         for deck_name in decks_to_create {
+            pbar.tick();
             let _ = client.decks().create_deck(&deck_name);
         }
     }
@@ -537,7 +541,11 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     m.suspend(|| {
         step.print_step(Some("Syncing notes to Anki"), Some(SYNC));
     });
-    create_missing_decks(&m, &mut step, &decks, &client);
+
+    m.suspend(|| {
+        step.print_step(Some("Creating new decks"), Some(PLUS));
+    });
+    create_missing_decks(&m, &decks, &client);
 
     m.suspend(|| {
         step.print_step(Some("Adding new notes"), Some(PLUS));

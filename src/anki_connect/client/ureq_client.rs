@@ -20,7 +20,7 @@ impl UreqClient {
         let config = Agent::config_builder()
             .timeout_global(Some(Duration::from_secs(5)))
             .build();
-        UreqClient {
+        Self {
             agent: config.into(),
             url: format!(
                 "{}:{}",
@@ -55,8 +55,8 @@ impl ClientBehavior for UreqClient {
         {
             Ok(response) => {
                 // dbg!(&response);
-                if response.error.is_some() {
-                    Err(APIError::AnkiConnectError(response.error.unwrap()))
+                if let Some(err) = response.error {
+                    Err(APIError::AnkiConnectError(err))
                 } else {
                     Ok(response)
                 }
@@ -84,8 +84,8 @@ impl ClientBehavior for UreqClient {
             Ok(response) => {
                 // trace!("{}", &response);
                 // dbg!(&response);
-                if response.error.is_some() {
-                    Err(APIError::AnkiConnectError(response.error.unwrap()))
+                if let Some(err) = response.error {
+                    Err(APIError::AnkiConnectError(err))
                 } else {
                     Ok(response)
                 }
@@ -103,7 +103,7 @@ impl Default for UreqClient {
         let config = Agent::config_builder()
             .timeout_global(Some(Duration::from_secs(5)))
             .build();
-        UreqClient {
+        Self {
             agent: config.into(),
             url: format!("{}:{}", "http://localhost", 8765),
         }

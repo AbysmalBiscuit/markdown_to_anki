@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+/// This module provides the [`AnkiConnectClient`].
 pub mod anki_connect_client;
 pub mod card;
 pub mod cards_client;

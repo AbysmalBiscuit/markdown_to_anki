@@ -320,7 +320,33 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         notes_errors: vec![],
     };
 
-    if !anki_notes_in_deck.is_empty() {
+    // Analyze found notes and decide what operations to do with them
+    if anki_notes_in_deck.is_empty() {
+        // PERF: Parent deck is empty or new, so add all callouts
+        decks.par_iter_mut().for_each(|deck| {
+            let _ = deck.callouts.par_iter_mut().try_for_each(|callout| {
+                // Callout is new
+                callout.operation = NoteOperation::Add;
+                Ok::<(), M2AnkiError>(())
+            });
+        });
+
+        operation_params.notes = decks
+            .par_iter()
+            .map(|deck| {
+                deck.callouts.par_iter().map(|callout| {
+                    model_type.from_callout(callout, &header_lang, &deck.qualified_name)
+                })
+            })
+            .flatten()
+            .collect();
+
+        operation_params.notes.iter().for_each(|note| {
+            operation_params.add.push(AddNote::new(
+                note.to_add_note(note.get_deck_name(), &model_name),
+            ));
+        });
+    } else {
         let markdown_id_to_anki_note: HashMap<&String, &NoteInfo> = anki_notes_in_deck
             .par_iter()
             .map(|note| (&note.markdown_id, note))
@@ -355,8 +381,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                         anki_card_ids_to_deck
                             .get(card_id)
                             .ok_or(M2AnkiError::DeckNameNotFound(format!(
-                                "Searching for {:?}",
-                                card_id
+                                "Searching for {card_id:?}"
                             )))?;
                     Ok((&note.markdown_id, *deck))
                 })
@@ -367,10 +392,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         decks.par_iter_mut().for_each(|deck| {
             let _ = deck.callouts.par_iter_mut().try_for_each(|callout| {
                 // Callout is new
-                if !markdown_id_to_anki_note_id.contains_key(&callout.markdown_id) {
-                    callout.operation = NoteOperation::Add;
-                    Ok::<(), M2AnkiError>(())
-                } else {
+                if markdown_id_to_anki_note_id.contains_key(&callout.markdown_id) {
                     if markdown_id_to_anki_deck
                         .get(&callout.markdown_id)
                         .ok_or(M2AnkiError::DeckNameNotFound(format!(
@@ -383,8 +405,10 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                     } else {
                         callout.operation = NoteOperation::Move;
                     }
-                    Ok::<(), M2AnkiError>(())
+                } else {
+                    callout.operation = NoteOperation::Add;
                 }
+                Ok::<(), M2AnkiError>(())
             });
         });
 
@@ -398,10 +422,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .flatten()
             .collect();
 
-        operation_params
-            .notes
-            .iter()
-            .for_each(|note| match note.get_operation() {
+        for note in &operation_params.notes {
+            match note.get_operation() {
                 NoteOperation::Add => operation_params.add.push(AddNote::new(
                     note.to_add_note(note.get_deck_name(), &model_name),
                 )),
@@ -409,22 +431,25 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                     match markdown_id_to_anki_note_id.get(note.get_markdown_id()) {
                         Some(note_id) => operation_params.update.push(note.to_update_note(note_id)),
                         None => operation_params.notes_errors.push((
-                            M2AnkiError::NoteIdNotFound(note.get_markdown_id().to_string()),
-                            &note,
+                            M2AnkiError::NoteIdNotFound(note.get_markdown_id().clone()),
+                            note,
                         )),
                     }
                 }
                 NoteOperation::Move => {
                     let anki_note = markdown_id_to_anki_note
                         .get(&note.get_markdown_id())
-                        .unwrap();
+                        .ok_or(M2AnkiError::InvalidOperation(String::from(
+                            "Assigned move, but not in markdown_id_to_anki_note_id",
+                        )))?;
                     let cards: Vec<&CardId> = anki_note.cards.iter().collect();
                     operation_params
                         .move_
-                        .push(ChangeDeck::new(cards, &note.get_deck_name()));
+                        .push(ChangeDeck::new(cards, note.get_deck_name()));
                 }
-                _ => (),
-            });
+                NoteOperation::Nop => (),
+            }
+        }
 
         // Check if notes need to be deleted
         let callouts_map: HashMap<&String, &Callout> = decks
@@ -438,13 +463,13 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
         operation_params.delete = anki_notes_in_deck
             .par_iter()
             .filter_map(|note| {
-                if !callouts_map.contains_key(&note.markdown_id) {
-                    Some(&note.note_id)
-                } else {
+                if callouts_map.contains_key(&note.markdown_id) {
                     None
+                } else {
+                    Some(&note.note_id)
                 }
             })
-            .collect::<Vec<&NoteId>>()
+            .collect::<Vec<&NoteId>>();
     }
 
     debug!(
@@ -459,6 +484,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
 
     // Prepare progress bars
     let m = MultiProgress::new();
+    #[allow(clippy::unwrap_used)]
     let sty = ProgressStyle::with_template(
         "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
     )
@@ -469,7 +495,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .try_into()
             .map_err(|_| M2AnkiError::ProgressBarError)?,
     ));
-    global_pbar.set_style(sty.clone());
+    global_pbar.set_style(sty);
     global_pbar.set_message("Overall");
 
     // let decks_pbar = m.add(ProgressBar::new(
@@ -504,7 +530,9 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     m.suspend(|| {
         step.print_step(Some("Adding new notes"), Some(PLUS));
     });
-    if !operation_params.add.is_empty() {
+    if operation_params.add.is_empty() {
+        m.suspend(|| info!("No new notes."));
+    } else {
         let action = "addNote";
         let add_actions: Vec<Action<AddNote>> = operation_params
             .add
@@ -530,13 +558,13 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                 Err(err) => Err(M2AnkiError::APIError(err)),
             };
         }
-    } else {
-        m.suspend(|| info!("No new notes."));
     }
 
     // Update notes
     m.suspend(|| step.print_step(Some("Updating notes"), Some(REPEAT)));
-    if !operation_params.update.is_empty() {
+    if operation_params.update.is_empty() {
+        m.suspend(|| info!("No notes to update."));
+    } else {
         let action = "updateNote";
         let update_actions: Vec<Action<UpdateNoteFields>> = operation_params
             .update
@@ -563,12 +591,12 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                 Err(err) => Err(M2AnkiError::APIError(err)),
             };
         }
-    } else {
-        m.suspend(|| info!("No notes to update."));
     }
 
     m.suspend(|| step.print_step(Some("Moving notes"), Some(SHUFFLE)));
-    if !operation_params.move_.is_empty() {
+    if operation_params.move_.is_empty() {
+        m.suspend(|| info!("No notes to move."));
+    } else {
         let action = "changeDeck";
         let move_actions: Vec<Action<ChangeDeck>> = operation_params
             .move_
@@ -594,8 +622,6 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                 Err(err) => Err(M2AnkiError::APIError(err)),
             };
         }
-    } else {
-        m.suspend(|| info!("No notes to move."));
     }
 
     // Delete removed notes
@@ -634,7 +660,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Report stats
     m.suspend(|| step.print_step(Some("Displaying stats and results:"), Some(BAR_CHART)));
     global_pbar.finish();
-    println!("\nSync Stats:\n{}", sync_stats);
+    println!("Sync Stats:\n{sync_stats}");
 
     if !failed_notes.is_empty() {
         warn!(

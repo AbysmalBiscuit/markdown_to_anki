@@ -29,6 +29,8 @@ pub enum M2AnkiError {
     GenericSendStatic(GenericSendStatic),
     #[error("error: {0}")]
     GenericSyncError(#[from] GenericSyncError),
+    #[error("error: {0}")]
+    InvalidOperation(String),
     #[error("Deck error: {0}")]
     IOError(#[from] IOError),
     #[error("error parsing model: {0}")]

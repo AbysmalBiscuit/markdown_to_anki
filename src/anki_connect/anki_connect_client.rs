@@ -27,11 +27,11 @@ impl AnkiConnectClient {
     pub fn new(url: Option<&str>, port: Option<u32>) -> Self {
         #[cfg(all(feature = "reqwest_blocking", not(feature = "ureq_blocking")))]
         {
-            return Self::ReqwestClient(ReqwestClient::new(url, port));
+            Self::ReqwestClient(ReqwestClient::new(url, port))
         }
         #[cfg(feature = "ureq_blocking")]
         {
-            return Self::UreqClient(UreqClient::new(url, port));
+            Self::UreqClient(UreqClient::new(url, port))
         }
 
         // fallback if neither feature is enabled
@@ -40,19 +40,19 @@ impl AnkiConnectClient {
     }
 
     #[allow(unused)]
-    pub fn cards(&self) -> CardsClient<'_> {
+    pub const fn cards(&self) -> CardsClient<'_> {
         CardsClient(self)
     }
 
-    pub fn decks(&self) -> DecksClient<'_> {
+    pub const fn decks(&self) -> DecksClient<'_> {
         DecksClient(self)
     }
 
-    pub fn models(&self) -> ModelsClient<'_> {
+    pub const fn models(&self) -> ModelsClient<'_> {
         ModelsClient(self)
     }
 
-    pub fn notes(&self) -> NotesClient<'_> {
+    pub const fn notes(&self) -> NotesClient<'_> {
         NotesClient(self)
     }
 
@@ -111,13 +111,20 @@ pub mod params {
 
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
-    pub struct Multi<'a, P: Serialize + std::fmt::Debug> {
+    pub struct Multi<'a, P>
+    where
+        P: Serialize + std::fmt::Debug,
+    {
         actions: Vec<&'a Action<'a, P>>,
     }
 
     #[derive(Debug, Serialize, new)]
     #[serde(rename_all = "camelCase")]
-    pub struct Action<'a, P: Serialize + std::fmt::Debug> {
+    pub struct Action<'a, P>
+    where
+        P: Serialize + std::fmt::Debug,
+    {
+        #[allow(clippy::struct_field_names)]
         action: &'a str,
         version: u8,
         params: &'a P,

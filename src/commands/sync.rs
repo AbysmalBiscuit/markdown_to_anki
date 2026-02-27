@@ -173,6 +173,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
             .filter(Result::is_ok)
             .map(Result::unwrap)
             .filter(|deck| !deck.callouts.is_empty())
+            // TODO: Filter to keep callouts without errors and to collect callouts with errors
+            // .filter(|deck| {})
             .map(|mut deck| {
                 deck.qualified_name = deck
                     .get_qualified_name(Some(&input_dir_clone), Some(&parent_deck_clone))

@@ -10,30 +10,30 @@ reqwest_blocking = ["reqwest/blocking"]
 
 [dependencies]
 clap = { version = "4.5.36", features = ["derive", "unicode", "wrap_help"] }
-indicatif = { version = "0.17.11", features = [
+indicatif = { version = "0.18", features = [
     "rayon",
     "improved_unicode",
     "in_memory",
 ] }
-console = { version = "0.15", default-features = false, features = [
+console = { version = "0.16", default-features = false, features = [
     "ansi-parsing",
 ] }
 jwalk = "0.8.1"
 markdown = { version = "1.0.0-alpha.23", features = ["json", "log", "serde"] }
 rayon = "1.10.0"
 regex = "1.11.1"
-reqwest = { version = "0.12", optional = true, default-features = false, features = [
+reqwest = { version = "0.13", optional = true, default-features = false, features = [
     "json",
 ] }
 serde = "1.0.219"
-strum = { version = "0.27.1", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 tracing = "0.1.41"
 tracing-indicatif = "0.3.9"
 tracing-subscriber = "0.3.19"
 enum_dispatch = "0.3.13"
 ureq = { version = "3.0.11", optional = true, features = ["json"] }
 serde_json = "1.0.140"
-annotate-snippets = "0.11.5"
+annotate-snippets = "0.12"
 thiserror = "2.0.12"
 derive-new = "0.7.0"
 serde_tuple = "1.1.0"
@@ -44,3 +44,9 @@ serde_repr = "0.1.20"
 [[bin]]
 name = "md2anki"
 path = "src/main.rs"
+
+[lints.clippy]
+pedantic = "warn"
+nursery = "warn"
+unwrap_used = "warn"
+expect_used = "warn"

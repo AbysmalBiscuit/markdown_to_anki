@@ -71,8 +71,9 @@ pub enum CalloutType {
     Links,
     #[strum(
         to_string = "example-sentence",
+        serialize = "예문",
         serialize = "예문-문장",
-        props(ko = "예")
+        props(ko = "예문")
     )]
     ExampleSentence,
     #[strum(to_string = "exception", serialize = "예외", props(ko = "예외"))]

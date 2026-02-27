@@ -102,22 +102,17 @@ pub enum CalloutType {
 impl CalloutType {
     pub fn get_name(&self, lang_iso: &SupportedLanguages) -> String {
         let default = &self.to_string();
-        let name: &str = self.get_str(&lang_iso.to_string()).unwrap_or(default);
-        name.split('-')
-            .map(|part| {
-                let mut chars = part.chars();
-                chars.next().map_or_else(String::new, |c| {
-                    c.to_ascii_uppercase().to_string() + chars.as_str()
-                })
-            })
-            .collect::<Vec<String>>()
-            .join(" ")
+        self.get_str(&lang_iso.to_string())
+            .unwrap_or(default)
+            .to_ascii_lowercase()
     }
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod test {
+    use crate::callout::callout_type::SupportedLanguages;
+
     use super::CalloutType;
 
     #[test]
@@ -159,15 +154,15 @@ mod test {
     fn get_name_from_en() {
         let callout_text = "word";
         let result: CalloutType = callout_text.try_into().unwrap();
-        assert_eq!(result.get_name(None), "Word");
-        assert_eq!(result.get_name(Some("ko")), "단어");
+        assert_eq!(result.get_name(&SupportedLanguages::default()), "word");
+        assert_eq!(result.get_name(&SupportedLanguages::KO), "단어");
     }
 
     #[test]
     fn get_name_from_ko() {
         let callout_text = "단어";
         let result: CalloutType = callout_text.try_into().unwrap();
-        assert_eq!(result.get_name(None), "Word");
-        assert_eq!(result.get_name(Some("ko")), "단어");
+        assert_eq!(result.get_name(&SupportedLanguages::default()), "word");
+        assert_eq!(result.get_name(&SupportedLanguages::KO), "단어");
     }
 }

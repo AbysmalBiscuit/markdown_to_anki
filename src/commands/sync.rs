@@ -33,33 +33,28 @@ use crate::progress::{
 
 #[derive(Debug)]
 struct SyncStats {
-    num_added: u64,
-    num_added_errors: u64,
-    num_updated: u64,
-    num_updated_errors: u64,
-    num_moved: u64,
-    num_moved_errors: u64,
-    num_deleted: u64,
-    num_deleted_errors: u64,
+    added: u64,
+    added_errors: u64,
+    updated: u64,
+    updated_errors: u64,
+    moved: u64,
+    moved_errors: u64,
+    deleted: u64,
+    deleted_errors: u64,
 }
 
 impl Display for SyncStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let max_value = *[
-            self.num_added,
-            self.num_updated,
-            self.num_moved,
-            self.num_deleted,
-        ]
-        .iter()
-        .max()
-        .unwrap();
+        let max_value = *[self.added, self.updated, self.moved, self.deleted]
+            .iter()
+            .max()
+            .unwrap();
         let width = (max_value + 10).to_string().len();
         let max_value = *[
-            self.num_added_errors,
-            self.num_updated_errors,
-            self.num_moved_errors,
-            self.num_deleted_errors,
+            self.added_errors,
+            self.updated_errors,
+            self.moved_errors,
+            self.deleted_errors,
         ]
         .iter()
         .max()
@@ -69,21 +64,21 @@ impl Display for SyncStats {
             f,
             "{:<8}{:>width$}\n{:<8}{:>width$}\n{:<8}{:>width$}\n{:<8}{:>width$}\n{:<15}{:>width2$}\n{:<15}{:>width2$}\n{:<15}{:>width2$}\n{:<15}{:>width2$}",
             "Added:",
-            self.num_added,
+            self.added,
             "Updated:",
-            self.num_updated,
+            self.updated,
             "Moved:",
-            self.num_moved,
+            self.moved,
             "Deleted:",
-            self.num_deleted,
+            self.deleted,
             "Added Errors:",
-            self.num_added_errors,
+            self.added_errors,
             "Updated Errors:",
-            self.num_updated_errors,
+            self.updated_errors,
             "Moved Errors:",
-            self.num_moved_errors,
+            self.moved_errors,
             "Deleted Errors:",
-            self.num_deleted_errors,
+            self.deleted_errors,
             width = width,
             width2 = width2,
         )
@@ -485,14 +480,14 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     // Prepare stats and error tracking
     let mut failed_notes: Vec<(PathBuf, Vec<(String, ModelType)>)> = Vec::new();
     let mut sync_stats = SyncStats {
-        num_added: 0,
-        num_added_errors: 0,
-        num_updated: 0,
-        num_updated_errors: 0,
-        num_moved: 0,
-        num_moved_errors: 0,
-        num_deleted: 0,
-        num_deleted_errors: 0,
+        added: 0,
+        added_errors: 0,
+        updated: 0,
+        updated_errors: 0,
+        moved: 0,
+        moved_errors: 0,
+        deleted: 0,
+        deleted_errors: 0,
     };
 
     // Start main upload loop
@@ -524,8 +519,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                     global_pbar.inc(response.len().try_into().unwrap());
                     let (success, fail): (Vec<&BasicResponse>, Vec<&BasicResponse>) =
                         response.par_iter().partition(|resp| resp.error.is_none());
-                    sync_stats.num_added += success.len() as u64;
-                    sync_stats.num_added_errors += fail.len() as u64;
+                    sync_stats.added += success.len() as u64;
+                    sync_stats.added_errors += fail.len() as u64;
                     Ok(())
                 }
                 Err(err) => Err(M2AnkiError::APIError(err)),
@@ -557,8 +552,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                     global_pbar.inc(response.len().try_into().unwrap());
                     let (success, fail): (Vec<&BasicResponse>, Vec<&BasicResponse>) =
                         response.par_iter().partition(|resp| resp.error.is_none());
-                    sync_stats.num_updated += success.len() as u64;
-                    sync_stats.num_updated_errors += fail.len() as u64;
+                    sync_stats.updated += success.len() as u64;
+                    sync_stats.updated_errors += fail.len() as u64;
                     Ok(())
                 }
                 Err(err) => Err(M2AnkiError::APIError(err)),
@@ -588,8 +583,8 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
                     global_pbar.inc(response.len().try_into().unwrap());
                     let (success, fail): (Vec<&BasicResponse>, Vec<&BasicResponse>) =
                         response.par_iter().partition(|resp| resp.error.is_none());
-                    sync_stats.num_moved += success.len() as u64;
-                    sync_stats.num_moved_errors += fail.len() as u64;
+                    sync_stats.moved += success.len() as u64;
+                    sync_stats.moved_errors += fail.len() as u64;
                     Ok(())
                 }
                 Err(err) => Err(M2AnkiError::APIError(err)),
@@ -603,7 +598,7 @@ pub fn sync(args: SyncArgs) -> Result<(), M2AnkiError> {
     m.suspend(|| step.print_step(Some("Deleting notes"), Some(CROSS)));
     if !operation_params.delete.is_empty() {
         let _ = client.notes().delete_notes(&operation_params.delete);
-        sync_stats.num_deleted += operation_params.delete.len() as u64;
+        sync_stats.deleted += operation_params.delete.len() as u64;
         global_pbar.inc(operation_params.delete.len().try_into().unwrap());
     }
 

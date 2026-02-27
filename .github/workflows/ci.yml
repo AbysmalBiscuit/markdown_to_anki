@@ -15,7 +15,6 @@ jobs:
         uses: actions/cache@v4
         continue-on-error: false
         with:
-          components: clippy, rustfmt
           path: |
             ~/.cargo/bin/
             ~/.cargo/registry/index/

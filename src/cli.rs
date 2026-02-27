@@ -22,7 +22,7 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Convert notes to the format used by ObsidianToAnki
+    /// Convert notes to the format used by `ObsidianToAnki`
     #[command(arg_required_else_help = true)]
     ObsidianToAnki {
         /// Input directory used to search for notes
@@ -32,7 +32,7 @@ pub enum Commands {
         /// the input directory
         output_file: Option<PathBuf>,
     },
-    /// Synchronize notes with Anki using AnkiConnect
+    /// Synchronize notes with Anki using `AnkiConnect`
     #[command(arg_required_else_help = true)]
     Sync(SyncArgs),
 }

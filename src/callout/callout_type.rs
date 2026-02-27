@@ -91,13 +91,14 @@ pub enum CalloutType {
 impl CalloutType {
     pub fn get_name(&self, lang_iso: Option<&str>) -> String {
         let default = &self.to_string();
-        let name = if let Some(lang) = lang_iso {
-            self.get_str(lang).unwrap_or(default)
-        } else {
-            default
-        };
-        name.split("-")
-            .map(|part| part[0..1].to_uppercase() + &part[1..])
+        let name: &str = lang_iso.map_or(default, |lang| self.get_str(lang).unwrap_or(default));
+        name.split('-')
+            .map(|part| {
+                let mut chars = part.chars();
+                chars.next().map_or_else(String::new, |c| {
+                    c.to_ascii_uppercase().to_string() + chars.as_str()
+                })
+            })
             .collect::<Vec<String>>()
             .join(" ")
     }
